@@ -1,4 +1,5 @@
-import os
+# import os
+from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
@@ -12,7 +13,7 @@ from sqlalchemy.orm import DeclarativeBase
 
 DATABASE_USER = 'admin'
 DATABASE_PASSWORD = 'admin'
-DATABASE_HOST = 'postgres'
+DATABASE_HOST = 'localhost'
 DATABASE_PORT = '5432'
 DATABASE_NAME = 'my_twitter'
 
@@ -28,7 +29,7 @@ async_session = async_sessionmaker(
 class Model(DeclarativeBase):
     pass
 
-
+@asynccontextmanager
 async def create_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:
         yield session

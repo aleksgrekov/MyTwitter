@@ -1,9 +1,10 @@
 from typing import List
 
-from sqlalchemy import ForeignKey, String, UniqueConstraint
+from bcrypt import checkpw, gensalt, hashpw
+from sqlalchemy import ForeignKey, String, UniqueConstraint, ARRAY, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from service import Model
+from .service import Model
 
 
 class User(Model):
@@ -43,6 +44,15 @@ class User(Model):
         cascade="all, delete-orphan"
     )
 
+    @classmethod
+    def hash_username(cls, username: str) -> str:
+        salt = gensalt()
+        return hashpw(username.encode('utf-8'), salt).decode('utf-8')
+
+    @classmethod
+    def compare_username(cls, username: str, hashed_username: str) -> bool:
+        return checkpw(username.encode('utf-8'), hashed_username.encode('utf-8'))
+
     def __repr__(self) -> str:
         return (
             f"<User(id={self.id}, username={self.username}, "
@@ -56,6 +66,7 @@ class Tweet(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     content: Mapped[str] = mapped_column(String(280))
+    media_ids: Mapped[List[int] | None] = mapped_column(ARRAY(Integer))
 
     author: Mapped["User"] = relationship(back_populates="tweets", lazy="joined")
 
@@ -66,7 +77,7 @@ class Tweet(Model):
     )
 
     def __repr__(self) -> str:
-        return f"<Tweet(id={self.id}, author_id={self.author_id}, tweet_data={self.content[:30]}...)>"
+        return f"<Tweet(id={self.id}, author_id={self.author_id}, content={self.content[:30]}...)>"
 
 
 class Media(Model):
@@ -74,6 +85,9 @@ class Media(Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     link: Mapped[str] = mapped_column(String(100))
+
+    def __repr__(self) -> str:
+        return f"<Media(id={self.id}, link={self.link})>"
 
 
 class Like(Model):
@@ -84,7 +98,7 @@ class Like(Model):
     tweet_id: Mapped[int] = mapped_column(ForeignKey("tweets.id"))
 
     author: Mapped["User"] = relationship(back_populates="likes", lazy="joined")
-    tweet: Mapped["User"] = relationship(back_populates="likes")
+    tweet: Mapped["Tweet"] = relationship(back_populates="likes")
 
     def __repr__(self) -> str:
         return (
