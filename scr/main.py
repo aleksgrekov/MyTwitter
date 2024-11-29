@@ -1,10 +1,17 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.ext.asyncio import AsyncSession
 from uvicorn import run
 
-from router import router
-from database import create_tables, delete_tables, populate_database, create_session
+from database import (
+    create_tables,
+    delete_tables,
+    populate_database,
+    async_session
+)
+
+from scr.router import router
 
 
 @asynccontextmanager
@@ -12,10 +19,8 @@ async def lifespan(fast_api: FastAPI):
     await delete_tables()
     print("База очищена")
     await create_tables()
-
-    async with create_session() as session:
-        await populate_database(session)
-        print("База заполнена тестовыми данными")
+    await populate_database(session=async_session())
+    print("База заполнена тестовыми данными")
 
     print("База готова к работе")
     yield

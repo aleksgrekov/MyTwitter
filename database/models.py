@@ -1,9 +1,12 @@
-from typing import List
+from typing import List, Optional, Dict, Any
 
-from bcrypt import checkpw, gensalt, hashpw
-from sqlalchemy import ForeignKey, String, UniqueConstraint, ARRAY, Integer
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import ForeignKey, String, UniqueConstraint, ARRAY, Integer, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Mapped, mapped_column, relationship, selectinload
 
+from scr import NewTweet, UserSchema
+
+from .functions import exception_handler
 from .service import Model
 
 
@@ -11,7 +14,7 @@ class User(Model):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    username: Mapped[str] = mapped_column(String(128))
+    username: Mapped[str] = mapped_column(String(128), index=True)
     name: Mapped[str | None] = mapped_column(String(30))
 
     __table_args__ = (
@@ -30,7 +33,7 @@ class User(Model):
         cascade="all, delete-orphan"
     )
 
-    following: Mapped[List["Follow"]] = relationship(
+    followings: Mapped[List["Follow"]] = relationship(
         "Follow",
         foreign_keys="Follow.follower_id",
         back_populates="follower",
@@ -39,19 +42,58 @@ class User(Model):
 
     followers: Mapped[List["Follow"]] = relationship(
         "Follow",
-        foreign_keys="Follow.followed_id",
-        back_populates="followed",
+        foreign_keys="Follow.following_id",
+        back_populates="following",
         cascade="all, delete-orphan"
     )
 
     @classmethod
-    def hash_username(cls, username: str) -> str:
-        salt = gensalt()
-        return hashpw(username.encode('utf-8'), salt).decode('utf-8')
+    async def get_user_id_by_username(cls, username: str, session: AsyncSession) -> Optional["User"]:
+        query = select(cls.id).where(cls.username == username)
+        request = await session.execute(query)
+        user_id = request.scalars().one_or_none()
+
+        return user_id if user_id else None
 
     @classmethod
-    def compare_username(cls, username: str, hashed_username: str) -> bool:
-        return checkpw(username.encode('utf-8'), hashed_username.encode('utf-8'))
+    async def get_user_with_followers_and_following(cls, session: AsyncSession, username: str = None,
+                                                    user_id: int = None) -> Dict[str, Any]:
+        if not (username or user_id):
+            return exception_handler("ValueError", "Missing one of argument (username or user_id)")
+
+        query = (
+            select(cls)
+            .options(selectinload(cls.followers), selectinload(cls.followings))
+        )
+        if username:
+            query = query.where(cls.username == username)
+        elif user_id:
+            query = query.where(cls.id == user_id)
+        result = await session.execute(query)
+
+        user = result.scalars().one_or_none()
+        if not user:
+            return exception_handler("ValueError", "User not found")
+
+        followers_ids = [follow.follower_id for follow in user.followers]
+        followers_query = select(cls).where(cls.id.in_(followers_ids))
+        followers_request = await session.execute(followers_query)
+        followers = followers_request.scalars().all()
+
+        following_ids = [follow.following_id for follow in user.followings]
+        following_query = select(cls).where(cls.id.in_(following_ids))
+        following_request = await session.execute(following_query)
+        followings = following_request.scalars().all()
+
+        return {
+            "result": "true",
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "followers": [UserSchema.model_validate(follower) for follower in followers],
+                "following": [UserSchema.model_validate(follow) for follow in followings],
+            },
+        }
 
     def __repr__(self) -> str:
         return (
@@ -65,8 +107,8 @@ class Tweet(Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    content: Mapped[str] = mapped_column(String(280))
-    media_ids: Mapped[List[int] | None] = mapped_column(ARRAY(Integer))
+    tweet_data: Mapped[str] = mapped_column(String(280))
+    tweet_media_ids: Mapped[Dict] = mapped_column(ARRAY(Integer))
 
     author: Mapped["User"] = relationship(back_populates="tweets", lazy="joined")
 
@@ -76,8 +118,35 @@ class Tweet(Model):
         lazy="joined"
     )
 
+    @classmethod
+    async def add_tweet(cls, username: str, tweet: NewTweet, session: AsyncSession) -> Dict[str, Any]:
+        try:
+            user_id = await User.get_user_id_by_username(username=username, session=session)
+            if not user_id:
+                return exception_handler(
+                    error_type="ValueError",
+                    error_message="There are no users with this ID"
+                )
+
+            tweet_dict = tweet.model_dump()
+            tweet_dict["author_id"] = user_id
+            new_tweet = Tweet(**tweet_dict)
+            session.add(new_tweet)
+
+            await session.flush()
+            await session.commit()
+            return {"result": True, "tweet_id": new_tweet.id}
+
+        except Exception as exc:
+            await session.rollback()
+            return exception_handler(
+                error_type=exc.__class__.__name__,
+                error_message=str(exc)
+            )
+
+
     def __repr__(self) -> str:
-        return f"<Tweet(id={self.id}, author_id={self.author_id}, content={self.content[:30]}...)>"
+        return f"<Tweet(id={self.id}, author_id={self.author_id}, content={self.tweet_data[:30]}...)>"
 
 
 class Media(Model):
@@ -109,19 +178,18 @@ class Like(Model):
 class Follow(Model):
     __tablename__ = "follows"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    follower_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    followed_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    follower_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    following_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
 
     follower: Mapped["User"] = relationship(
-        "User", foreign_keys=[follower_id], back_populates="following"
+        "User", foreign_keys=[follower_id], back_populates="followings"
     )
-    followed: Mapped["User"] = relationship(
-        "User", foreign_keys=[followed_id], back_populates="followers"
+    following: Mapped["User"] = relationship(
+        "User", foreign_keys=[following_id], back_populates="followers"
     )
 
     def __repr__(self) -> str:
         return (
-            f"<Follow(id={self.id}, follower_id={self.follower_id}, "
-            f"followed_id={self.followed_id})>"
+            f"<Follow(follower_id={self.follower_id}, "
+            f"followed_id={self.following_id})>"
         )
