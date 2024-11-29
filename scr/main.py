@@ -1,17 +1,12 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.ext.asyncio import AsyncSession
 from uvicorn import run
 
-from database import (
-    create_tables,
-    delete_tables,
-    populate_database,
-    async_session
-)
+from database.prepare_data import populate_database
+from database.service import create_tables, delete_tables, async_session
 
-from scr.router import router
+from router import router
 
 
 @asynccontextmanager

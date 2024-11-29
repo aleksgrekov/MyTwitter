@@ -1,13 +1,14 @@
 from typing import List, Optional, Dict, Any
 
 from sqlalchemy import ForeignKey, String, UniqueConstraint, ARRAY, Integer, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column, relationship, selectinload
 
-from scr import NewTweet, UserSchema
+from scr.functions import exception_handler
 
-from .functions import exception_handler
 from .service import Model
+from .schemas import NewTweet, UserSchema
 
 
 class User(Model):
@@ -108,7 +109,7 @@ class Tweet(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     tweet_data: Mapped[str] = mapped_column(String(280))
-    tweet_media_ids: Mapped[Dict] = mapped_column(ARRAY(Integer))
+    tweet_media_ids: Mapped[List[int]] = mapped_column(ARRAY(Integer))
 
     author: Mapped["User"] = relationship(back_populates="tweets", lazy="joined")
 
@@ -130,20 +131,19 @@ class Tweet(Model):
 
             tweet_dict = tweet.model_dump()
             tweet_dict["author_id"] = user_id
-            new_tweet = Tweet(**tweet_dict)
+            new_tweet = cls(**tweet_dict)
             session.add(new_tweet)
 
             await session.flush()
             await session.commit()
             return {"result": True, "tweet_id": new_tweet.id}
 
-        except Exception as exc:
+        except IntegrityError as exc:
             await session.rollback()
             return exception_handler(
                 error_type=exc.__class__.__name__,
                 error_message=str(exc)
             )
-
 
     def __repr__(self) -> str:
         return f"<Tweet(id={self.id}, author_id={self.author_id}, content={self.tweet_data[:30]}...)>"
@@ -157,6 +157,23 @@ class Media(Model):
 
     def __repr__(self) -> str:
         return f"<Media(id={self.id}, link={self.link})>"
+
+    @classmethod
+    async def add_media(cls, link: str, session: AsyncSession) -> Dict[str, Any]:
+        try:
+            new_media = cls(link=link)
+            session.add(new_media)
+
+            await session.flush()
+            await session.commit()
+            return {"result": True, "media_id": new_media.id}
+
+        except IntegrityError as exc:
+            await session.rollback()
+            return exception_handler(
+                error_type=exc.__class__.__name__,
+                error_message=str(exc)
+            )
 
 
 class Like(Model):

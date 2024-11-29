@@ -1,9 +1,5 @@
-import asyncio
 import random
-from pathlib import Path
-from typing import List, Literal
 
-import aiofiles
 from faker import Faker
 from sqlalchemy import select, exists
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,38 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .models import User, Tweet, Media, Like, Follow
 
 faker = Faker()
-file_lock = asyncio.Lock()
-file_path = Path(__file__).parent / "users.txt"
-
-
-async def manage_file(mode: Literal["w", "a"], content: str = "") -> None:
-    global file_lock, file_path
-    async with file_lock:
-        async with aiofiles.open(file_path, mode=mode) as file:
-            if mode == "w":
-                await file.write("")
-            elif mode == "a":
-                await file.write(content + "\n")
-
-
-async def generate_users(count: int) -> List[User]:
-    users = [
-        User(username=faker.user_name(), name=faker.name()) for _ in range(count)
-    ]
-    users.append(User(username="test", name="Test Name"))
-
-    for user in users:
-        user_data = f"{user.name}:{user.username}"
-        await manage_file("a", user_data)
-
-    return users
 
 
 async def create_follow_if_not_exists(
         session: AsyncSession, follower_id: int, followed_id: int
 ) -> bool:
     if follower_id == followed_id:
-        return False  # Пользователь не может подписаться сам на себя
+        return False
 
     query = select(exists().where(
         Follow.follower_id == follower_id,
@@ -59,10 +30,13 @@ async def create_follow_if_not_exists(
 
 async def populate_database(session: AsyncSession):
     try:
-        await manage_file("w")
-
         async with session.begin():
-            users = await generate_users(10)
+            session.add(User(username="test", name="Test Name"))
+            await session.commit()
+
+            users = [
+                User(username=faker.user_name(), name=faker.name()) for _ in range(10)
+            ]
             session.add_all(users)
             await session.flush()
 
@@ -92,6 +66,7 @@ async def populate_database(session: AsyncSession):
                     follows_created += 1
             else:
                 await session.commit()
+
     except Exception as e:
         await session.rollback()
         print(e.__class__.__name__, e)

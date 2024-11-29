@@ -1,1 +1,0 @@
-from schemas import NewTweet, UserSchema
