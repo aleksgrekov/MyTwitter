@@ -5,21 +5,24 @@ from uvicorn import run
 
 from database.prepare_data import populate_database
 from database.service import create_tables, delete_tables, async_session
+from logger.logger_setup import get_logger
 
 from router import router
+
+main_logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(fast_api: FastAPI):
     await delete_tables()
-    print("База очищена")
+    main_logger.info("База очищена")
     await create_tables()
     await populate_database(session=async_session())
-    print("База заполнена тестовыми данными")
+    main_logger.info("База заполнена тестовыми данными")
 
-    print("База готова к работе")
+    main_logger.info("База готова к работе")
     yield
-    print("Выключение")
+    main_logger.info("Выключение")
 
 
 app = FastAPI(lifespan=lifespan)
