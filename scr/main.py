@@ -7,7 +7,8 @@ from database.prepare_data import populate_database
 from database.service import create_tables, delete_tables, async_session
 from logger.logger_setup import get_logger
 
-from router import router
+from routers.api_router import api_router
+from routers.home_router import home_route
 
 main_logger = get_logger(__name__)
 
@@ -26,7 +27,8 @@ async def lifespan(fast_api: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-app.include_router(router)
+app.include_router(api_router)
+app.include_router(home_route)
 
 app.mount("/css", StaticFiles(directory="dist/css"), name="css")
 app.mount("/js", StaticFiles(directory="dist/js"), name="js")
