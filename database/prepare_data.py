@@ -1,4 +1,3 @@
-import asyncio
 import random
 from pathlib import Path
 
@@ -7,7 +6,7 @@ from faker import Faker
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from logger.logger_setup import get_logger
-from .models import User, Tweet, Like, Follow
+from database.models import User, Tweet, Like, Follow
 
 faker = Faker()
 data_logger = get_logger(__name__)

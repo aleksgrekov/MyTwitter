@@ -1,5 +1,4 @@
-import asyncio
-from typing import List, Optional, Dict, Any, Sequence
+from typing import List, Optional, Sequence, Union
 
 from sqlalchemy import (
     ForeignKey, String, ARRAY, Integer, select, delete, exists
@@ -14,7 +13,7 @@ from scr.functions import exception_handler
 
 from .service import Model
 from .schemas import NewTweetDataSchema, UserSchema, NewTweetResponseSchema, UserWithFollowSchema, UserResponseSchema, \
-    NewMediaResponseSchema, TweetResponseSchema, TweetSchema, LikeSchema
+    NewMediaResponseSchema, TweetResponseSchema, TweetSchema, LikeSchema, SuccessSchema, ErrorResponseSchema
 
 models_logger = get_logger(__name__)
 
@@ -46,26 +45,31 @@ class User(Model):
 
     @classmethod
     async def is_user_exist(cls, user_id: int, session: AsyncSession) -> bool:
+        """Check if a user exists by their ID."""
         return await session.scalar(select(exists().where(cls.id == user_id)))
 
     @classmethod
     async def get_user_id_by(cls, username: str, session: AsyncSession) -> Optional[int]:
+        """Get the user ID by their username."""
         return await session.scalar(select(cls.id).where(cls.username == username))
 
     @classmethod
     async def get_user_followers(cls, user_id: int, session: AsyncSession) -> Sequence["User"]:
+        """Get the followers of a user."""
         query = select(cls).join(Follow, Follow.follower_id == cls.id).where(Follow.following_id == user_id)
         return (await session.scalars(query)).all()
 
     @classmethod
     async def get_user_following(cls, user_id: int, session: AsyncSession) -> Sequence["User"]:
+        """Get the users a user is following."""
         query = select(cls).join(Follow, Follow.following_id == cls.id).where(Follow.follower_id == user_id)
         return (await session.scalars(query)).all()
 
     @classmethod
     async def get_user_with_followers_and_following(
             cls, session: AsyncSession, username: Optional[str] = None, user_id: Optional[int] = None
-    ) -> Dict[str, Any]:
+    ) -> Union[UserResponseSchema, ErrorResponseSchema]:
+        """Get user with their followers and following list."""
         if not username and not user_id:
             return exception_handler(models_logger, "ValueError", "Missing one of argument (username or user_id)")
 
@@ -88,7 +92,7 @@ class User(Model):
                 followers=[UserSchema.model_validate(follow) for follow in followers],
                 following=[UserSchema.model_validate(follow) for follow in followings]
             )
-        ).model_dump()
+        )
 
 
 class Tweet(Model):
@@ -116,9 +120,7 @@ class Tweet(Model):
     @classmethod
     async def collect_tweet_data(cls, tweet: "Tweet", session: AsyncSession) -> TweetSchema:
         attachments = [await Media.get_media_link_by(media_id, session) for media_id in tweet.tweet_media_ids]
-
         author_data = UserSchema.model_validate(tweet.author).model_dump()
-
         likes_data = [LikeSchema.model_validate(like).model_dump() for like in tweet.likes]
 
         tweet_dict = {
@@ -135,7 +137,8 @@ class Tweet(Model):
         return await session.scalar(select(exists().where(cls.id == tweet_id)))
 
     @classmethod
-    async def get_tweets_selection(cls, username: str, session: AsyncSession) -> Dict[str, Any]:
+    async def get_tweets_selection(cls, username: str, session: AsyncSession) -> Union[
+        TweetResponseSchema, ErrorResponseSchema]:
         try:
             user_id = await User.get_user_id_by(username, session)
             if not user_id:
@@ -147,14 +150,15 @@ class Tweet(Model):
 
             tweet_schema = [await cls.collect_tweet_data(tweet, session) for tweet in tweets]
 
-            return TweetResponseSchema(tweets=tweet_schema).model_dump()
+            return TweetResponseSchema(tweets=tweet_schema)
         except NoResultFound as exc:
             return exception_handler(models_logger, exc.__class__.__name__, str(exc))
         except Exception as exc:
             return exception_handler(models_logger, exc.__class__.__name__, str(exc))
 
     @classmethod
-    async def add_tweet(cls, username: str, tweet: NewTweetDataSchema, session: AsyncSession) -> Dict[str, Any]:
+    async def add_tweet(cls, username: str, tweet: NewTweetDataSchema, session: AsyncSession) -> Union[
+        NewTweetResponseSchema, ErrorResponseSchema]:
         try:
             user_id = await User.get_user_id_by(username, session)
             if not user_id:
@@ -167,14 +171,15 @@ class Tweet(Model):
             session.add(new_tweet)
             await session.flush()
             await session.commit()
-            return NewTweetResponseSchema(tweet_id=new_tweet.id).model_dump()
+            return NewTweetResponseSchema(tweet_id=new_tweet.id)
 
         except IntegrityError as exc:
             await session.rollback()
             return exception_handler(models_logger, exc.__class__.__name__, str(exc))
 
     @classmethod
-    async def delete_tweet(cls, username: str, tweet_id: int, session: AsyncSession) -> Dict[str, Any]:
+    async def delete_tweet(cls, username: str, tweet_id: int, session: AsyncSession) -> Union[
+        SuccessSchema, ErrorResponseSchema]:
         try:
             user_id = await User.get_user_id_by(username, session)
             if not user_id:
@@ -186,7 +191,7 @@ class Tweet(Model):
                 return exception_handler(models_logger, "ValueError", "Tweet with this ID does not exist")
 
             await session.commit()
-            return {"result": True}
+            return SuccessSchema()
 
         except SQLAlchemyError as exc:
             await session.rollback()
@@ -209,13 +214,13 @@ class Media(Model):
         return link
 
     @classmethod
-    async def add_media(cls, link: str, session: AsyncSession) -> Dict[str, Any]:
+    async def add_media(cls, link: str, session: AsyncSession) -> Union[NewMediaResponseSchema, ErrorResponseSchema]:
         try:
             new_media = cls(link=link)
             session.add(new_media)
             await session.flush()
             await session.commit()
-            return NewMediaResponseSchema(media_id=new_media.id).model_dump()
+            return NewMediaResponseSchema(media_id=new_media.id)
 
         except IntegrityError as exc:
             await session.rollback()
@@ -239,7 +244,8 @@ class Like(Model):
         return f"<Like(id={self.id}, author_id={self.user_id}, tweet_id={self.tweet_id})>"
 
     @classmethod
-    async def like(cls, username: str, tweet_id: int, session: AsyncSession) -> Dict[str, Any]:
+    async def like(cls, username: str, tweet_id: int, session: AsyncSession) -> Union[
+        SuccessSchema, ErrorResponseSchema]:
         try:
             user_id = await User.get_user_id_by(username, session)
             if not user_id:
@@ -251,14 +257,15 @@ class Like(Model):
             session.add(cls(user_id=user_id, tweet_id=tweet_id))
             await session.commit()
 
-            return {"result": True}
+            return SuccessSchema()
 
         except IntegrityError as exc:
             await session.rollback()
             return exception_handler(models_logger, exc.__class__.__name__, str(exc))
 
     @classmethod
-    async def delete_like(cls, username: str, tweet_id: int, session: AsyncSession) -> Dict[str, Any]:
+    async def delete_like(cls, username: str, tweet_id: int, session: AsyncSession) -> Union[
+        SuccessSchema, ErrorResponseSchema]:
         try:
             user_id = await User.get_user_id_by(username, session)
 
@@ -275,7 +282,7 @@ class Like(Model):
                 return exception_handler(models_logger, "ValueError", "No like entry found for this user and tweet")
 
             await session.commit()
-            return {"result": True}
+            return SuccessSchema()
 
         except SQLAlchemyError as exc:
             await session.rollback()
@@ -316,7 +323,8 @@ class Follow(Model):
         return (await session.scalars(query)).all()
 
     @classmethod
-    async def follow(cls, username: str, following_id: int, session: AsyncSession) -> Dict[str, Any]:
+    async def follow(cls, username: str, following_id: int, session: AsyncSession) -> Union[
+        SuccessSchema, ErrorResponseSchema]:
         try:
             follower_id = await User.get_user_id_by(username, session)
             if not follower_id:
@@ -328,14 +336,15 @@ class Follow(Model):
             session.add(cls(follower_id=follower_id, following_id=following_id))
             await session.commit()
 
-            return {"result": True}
+            return SuccessSchema()
 
         except IntegrityError as exc:
             await session.rollback()
             return exception_handler(models_logger, exc.__class__.__name__, str(exc))
 
     @classmethod
-    async def delete_follow(cls, username: str, following_id: int, session: AsyncSession) -> Dict[str, Any]:
+    async def delete_follow(cls, username: str, following_id: int, session: AsyncSession) -> Union[
+        SuccessSchema, ErrorResponseSchema]:
         try:
             follower_id = await User.get_user_id_by(username, session)
 
@@ -354,7 +363,7 @@ class Follow(Model):
                                          "No follow entry found for this follower ID and following ID")
 
             await session.commit()
-            return {"result": True}
+            return SuccessSchema()
 
         except SQLAlchemyError as exc:
             await session.rollback()

@@ -6,6 +6,12 @@ class SuccessSchema(BaseModel):
     """Base schema for success responses."""
     result: bool = Field(default=True, title="The success response field")
 
+class ErrorResponseSchema(BaseModel):
+    """Schema for an error response."""
+    result: bool = Field(False, description="Indicates that the operation was unsuccessful.")
+    error_type: str = Field(..., description="The type or class of the error.")
+    error_message: str = Field(..., description="A descriptive message about the error.")
+
 
 class NewTweetDataSchema(BaseModel):
     """Schema for creating a new tweet."""
