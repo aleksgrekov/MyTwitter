@@ -13,7 +13,7 @@ from sqlalchemy.orm import DeclarativeBase
 DATABASE_USER = 'admin'
 DATABASE_PASSWORD = 'admin'
 DATABASE_HOST = 'localhost'
-DATABASE_PORT = '5432'
+DATABASE_PORT = '5433'
 DATABASE_NAME = 'my_twitter'
 
 DATABASE_URL = f"postgresql+asyncpg://{DATABASE_USER}:{DATABASE_PASSWORD}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"

@@ -6,6 +6,7 @@ class SuccessSchema(BaseModel):
     """Base schema for success responses."""
     result: bool = Field(default=True, title="The success response field")
 
+
 class ErrorResponseSchema(BaseModel):
     """Schema for an error response."""
     result: bool = Field(False, description="Indicates that the operation was unsuccessful.")
@@ -77,7 +78,6 @@ class LikeSchema(BaseModel):
 
 
 class TweetSchema(BaseModel):
-    """Schema for tweet information."""
     """Schema for tweet information."""
     id: int = Field(..., title="ID of the tweet")
     content: str = Field(..., max_length=280, title="Content of the tweet, max 280 characters")

@@ -130,7 +130,7 @@ async def like(
         api_key: Annotated[str, Header(description="User's API key")],
         db: AsyncSession = Depends(create_session)
 ) -> Union[SuccessSchema, ErrorResponseSchema]:
-    return await Like.like(username=api_key, tweet_id=tweet_id, session=db)
+    return await Like.add_like(username=api_key, tweet_id=tweet_id, session=db)
 
 
 @api_router.delete(
@@ -150,7 +150,7 @@ async def delete_like(
         api_key: Annotated[str, Header(description="User's API key")],
         db: AsyncSession = Depends(create_session)
 ) -> Union[SuccessSchema, ErrorResponseSchema]:
-    return await Like.delete_like(username=api_key, tweet_id=tweet_id, session=db)
+    return await Like.remove_like(username=api_key, tweet_id=tweet_id, session=db)
 
 
 @api_router.post(
@@ -190,7 +190,7 @@ async def unfollow_user(
         api_key: Annotated[str, Header(description="User's API key")],
         db: AsyncSession = Depends(create_session)
 ) -> Union[SuccessSchema, ErrorResponseSchema]:
-    return await Follow.delete_follow(username=api_key, following_id=user_id, session=db)
+    return await Follow.remove_follow(username=api_key, following_id=user_id, session=db)
 
 
 @api_router.post(

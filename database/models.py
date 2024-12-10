@@ -3,7 +3,7 @@ from typing import List, Optional, Sequence, Union
 from sqlalchemy import (
     ForeignKey, String, ARRAY, Integer, select, delete, exists
 )
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError, NoResultFound
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -119,26 +119,28 @@ class Tweet(Model):
 
     @classmethod
     async def collect_tweet_data(cls, tweet: "Tweet", session: AsyncSession) -> TweetSchema:
+        """Collect detailed tweet data including attachments and likes."""
         attachments = [await Media.get_media_link_by(media_id, session) for media_id in tweet.tweet_media_ids]
         author_data = UserSchema.model_validate(tweet.author).model_dump()
         likes_data = [LikeSchema.model_validate(like).model_dump() for like in tweet.likes]
 
-        tweet_dict = {
-            "id": tweet.id,
-            "content": tweet.tweet_data,
-            "attachments": attachments,
-            "author": author_data,
-            "likes": likes_data
-        }
-        return TweetSchema(**tweet_dict)
+        return TweetSchema(
+            id=tweet.id,
+            content=tweet.tweet_data,
+            attachments=attachments,
+            author=author_data,
+            likes=likes_data
+        )
 
     @classmethod
     async def is_tweet_exist(cls, tweet_id: int, session: AsyncSession) -> bool:
+        """Check if a tweet exists by its ID."""
         return await session.scalar(select(exists().where(cls.id == tweet_id)))
 
     @classmethod
     async def get_tweets_selection(cls, username: str, session: AsyncSession) -> Union[
         TweetResponseSchema, ErrorResponseSchema]:
+        """Get all tweets for a user."""
         try:
             user_id = await User.get_user_id_by(username, session)
             if not user_id:
@@ -151,14 +153,13 @@ class Tweet(Model):
             tweet_schema = [await cls.collect_tweet_data(tweet, session) for tweet in tweets]
 
             return TweetResponseSchema(tweets=tweet_schema)
-        except NoResultFound as exc:
-            return exception_handler(models_logger, exc.__class__.__name__, str(exc))
         except Exception as exc:
             return exception_handler(models_logger, exc.__class__.__name__, str(exc))
 
     @classmethod
     async def add_tweet(cls, username: str, tweet: NewTweetDataSchema, session: AsyncSession) -> Union[
         NewTweetResponseSchema, ErrorResponseSchema]:
+        """Add a new tweet."""
         try:
             user_id = await User.get_user_id_by(username, session)
             if not user_id:
@@ -172,7 +173,6 @@ class Tweet(Model):
             await session.flush()
             await session.commit()
             return NewTweetResponseSchema(tweet_id=new_tweet.id)
-
         except IntegrityError as exc:
             await session.rollback()
             return exception_handler(models_logger, exc.__class__.__name__, str(exc))
@@ -180,6 +180,7 @@ class Tweet(Model):
     @classmethod
     async def delete_tweet(cls, username: str, tweet_id: int, session: AsyncSession) -> Union[
         SuccessSchema, ErrorResponseSchema]:
+        """Delete a tweet."""
         try:
             user_id = await User.get_user_id_by(username, session)
             if not user_id:
@@ -209,12 +210,14 @@ class Media(Model):
 
     @classmethod
     async def get_media_link_by(cls, media_id: int, session: AsyncSession) -> str:
+        """Get media link by ID"""
         query = select(cls.link).where(cls.id == media_id)
         link = (await session.scalars(query)).one()
         return link
 
     @classmethod
     async def add_media(cls, link: str, session: AsyncSession) -> Union[NewMediaResponseSchema, ErrorResponseSchema]:
+        """Add new media"""
         try:
             new_media = cls(link=link)
             session.add(new_media)
@@ -244,15 +247,23 @@ class Like(Model):
         return f"<Like(id={self.id}, author_id={self.user_id}, tweet_id={self.tweet_id})>"
 
     @classmethod
-    async def like(cls, username: str, tweet_id: int, session: AsyncSession) -> Union[
+    async def is_like_exist(cls, user_id: int, tweet_id: int, session: AsyncSession) -> bool:
+        """Check if a like exists for a tweet by a user."""
+        return await session.scalar(select(exists().where(cls.user_id == user_id, cls.tweet_id == tweet_id)))
+
+    @classmethod
+    async def add_like(cls, username: str, tweet_id: int, session: AsyncSession) -> Union[
         SuccessSchema, ErrorResponseSchema]:
+        """Add a like for a tweet."""
         try:
             user_id = await User.get_user_id_by(username, session)
+
             if not user_id:
                 return exception_handler(models_logger, "ValueError", "User with this username does not exist")
-
-            if not await Tweet.is_tweet_exist(tweet_id, session):
+            elif not await Tweet.is_tweet_exist(tweet_id, session):
                 return exception_handler(models_logger, "ValueError", "Tweet with this tweet_id does not exist")
+            elif await cls.is_like_exist(user_id, tweet_id, session):
+                return exception_handler(models_logger, "ValueError", "Like already exists")
 
             session.add(cls(user_id=user_id, tweet_id=tweet_id))
             await session.commit()
@@ -264,8 +275,9 @@ class Like(Model):
             return exception_handler(models_logger, exc.__class__.__name__, str(exc))
 
     @classmethod
-    async def delete_like(cls, username: str, tweet_id: int, session: AsyncSession) -> Union[
+    async def remove_like(cls, username: str, tweet_id: int, session: AsyncSession) -> Union[
         SuccessSchema, ErrorResponseSchema]:
+        """Remove a like from a tweet."""
         try:
             user_id = await User.get_user_id_by(username, session)
 
@@ -314,6 +326,7 @@ class Follow(Model):
 
     @classmethod
     async def get_following_by(cls, username: str, session: AsyncSession) -> Sequence[int]:
+        """Get following by username"""
         user_id = await User.get_user_id_by(username, session)
 
         if not user_id:
@@ -325,12 +338,13 @@ class Follow(Model):
     @classmethod
     async def follow(cls, username: str, following_id: int, session: AsyncSession) -> Union[
         SuccessSchema, ErrorResponseSchema]:
+        """Add a follow relationship."""
         try:
             follower_id = await User.get_user_id_by(username, session)
+
             if not follower_id:
                 return exception_handler(models_logger, "ValueError", "User with this username does not exist")
-
-            if not await User.is_user_exist(following_id, session):
+            elif not await User.is_user_exist(following_id, session):
                 return exception_handler(models_logger, "ValueError", "User with this ID does not exist")
 
             session.add(cls(follower_id=follower_id, following_id=following_id))
@@ -343,8 +357,9 @@ class Follow(Model):
             return exception_handler(models_logger, exc.__class__.__name__, str(exc))
 
     @classmethod
-    async def delete_follow(cls, username: str, following_id: int, session: AsyncSession) -> Union[
+    async def remove_follow(cls, username: str, following_id: int, session: AsyncSession) -> Union[
         SuccessSchema, ErrorResponseSchema]:
+        """Remove a follow relationship."""
         try:
             follower_id = await User.get_user_id_by(username, session)
 

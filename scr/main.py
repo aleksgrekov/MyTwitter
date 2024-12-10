@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from uvicorn import run
 
-from database.prepare_data import populate_database
+from tests.prepare_data import populate_database
 from database.service import create_tables, delete_tables, async_session
 from logger.logger_setup import get_logger
 
@@ -15,11 +15,11 @@ main_logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(fast_api: FastAPI):
-    await delete_tables()
-    main_logger.info("База очищена")
+    # await delete_tables()
+    # main_logger.info("База очищена")
     await create_tables()
-    await populate_database(session=async_session())
-    main_logger.info("База заполнена тестовыми данными")
+    # await populate_database(session=async_session())
+    # main_logger.info("База заполнена тестовыми данными")
 
     main_logger.info("База готова к работе")
     yield
