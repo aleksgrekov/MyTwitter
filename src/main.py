@@ -3,7 +3,6 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from uvicorn import run
 
-from tests.prepare_data import populate_database
 from database.service import create_tables, delete_tables, async_session
 from logger.logger_setup import get_logger
 

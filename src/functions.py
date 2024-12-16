@@ -41,7 +41,10 @@ async def save_uploaded_file(api_key: str, file: UploadFile) -> str:
     if not str(output_file).startswith(str(upload_folder)):
         raise ValueError("Attempt to write outside the media directory.")
 
-    async with aiofiles.open(output_file, 'wb') as f:
-        await f.write(await file.read())
+    try:
+        async with aiofiles.open(output_file, 'wb') as f:
+            await f.write(await file.read())
+    except Exception as e:
+        raise ValueError(f"Failed to save file: {str(e)}")
 
     return str(output_file)

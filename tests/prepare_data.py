@@ -46,7 +46,13 @@ def generate_users(num_users: int = NUM_USERS) -> list[User]:
     Returns:
         list[User]: List of User objects.
     """
-    users = [User(username=faker.user_name(), name=faker.name()) for _ in range(num_users)]
+    usernames = set()
+    users = []
+    while len(users) < num_users:
+        username = faker.user_name()
+        if username not in usernames:
+            usernames.add(username)
+            users.append(User(username=username, name=faker.name()))
     users.append(User(username="test", name="Test Name"))
     data_logger.debug(f"Created {len(users)} users.")
     return users

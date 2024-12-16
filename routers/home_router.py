@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Request, status, Depends
+from fastapi import APIRouter, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from logger.logger_setup import get_logger
-from scr.functions import exception_handler
+from src.functions import exception_handler
 
 routers_logger = get_logger(__name__)
 home_route = APIRouter(
@@ -58,6 +58,6 @@ async def home_page(request: Request) -> HTMLResponse:
     - **500 Internal Server Error**: Could occur if there is an issue with rendering the template, like a missing file or a Jinja2 rendering error.
     """
     try:
-        return templates.TemplateResponse("index.html", {"request": request})
+        return templates.TemplateResponse(request, "index.html", {"request": request})
     except Exception as exc:
         return exception_handler(routers_logger, exc.__class__.__name__, str(exc))

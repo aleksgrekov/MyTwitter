@@ -9,16 +9,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from logger.logger_setup import get_logger
-from scr.functions import exception_handler
+from src.functions import exception_handler
 
-from .service import Model
+from .service import Base
 from .schemas import NewTweetDataSchema, UserSchema, NewTweetResponseSchema, UserWithFollowSchema, UserResponseSchema, \
     NewMediaResponseSchema, TweetResponseSchema, TweetSchema, LikeSchema, SuccessSchema, ErrorResponseSchema
 
 models_logger = get_logger(__name__)
 
 
-class User(Model):
+class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, doc="Primary key of the user")
@@ -95,7 +95,7 @@ class User(Model):
         )
 
 
-class Tweet(Model):
+class Tweet(Base):
     __tablename__ = "tweets"
 
     id: Mapped[int] = mapped_column(primary_key=True, doc="Primary key of the tweet")
@@ -199,7 +199,7 @@ class Tweet(Model):
             return exception_handler(models_logger, exc.__class__.__name__, str(exc))
 
 
-class Media(Model):
+class Media(Base):
     __tablename__ = "medias"
 
     id: Mapped[int] = mapped_column(primary_key=True, doc="Primary key of the media")
@@ -230,7 +230,7 @@ class Media(Model):
             return exception_handler(models_logger, exc.__class__.__name__, str(exc))
 
 
-class Like(Model):
+class Like(Base):
     __tablename__ = "likes"
 
     id: Mapped[int] = mapped_column(primary_key=True, doc="The unique identifier of the like.")
@@ -301,7 +301,7 @@ class Like(Model):
             return exception_handler(models_logger, exc.__class__.__name__, str(exc))
 
 
-class Follow(Model):
+class Follow(Base):
     __tablename__ = "follows"
 
     follower_id: Mapped[int] = mapped_column(
