@@ -41,12 +41,6 @@ async def teardown_db():
         await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture(scope="function")
-def event_loop():
-    loop = asyncio.get_event_loop()
-    yield loop
-    loop.close()
-
 
 @pytest.fixture(scope="function")
 async def prepare_database():
@@ -97,7 +91,7 @@ async def populate_database(prepare_database) -> None:
 
 
 @pytest.fixture(scope="function")
-async def ac(event_loop) -> AsyncGenerator[AsyncClient, None]:
+async def ac() -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(
             transport=ASGITransport(app=app),
             base_url="http://test"
