@@ -6,16 +6,20 @@ from sqlalchemy import (
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from logger.logger_setup import get_logger
 from src.functions import exception_handler
 
-from database.service import Base
-from database.schemas import NewTweetDataSchema, UserSchema, NewTweetResponseSchema, UserWithFollowSchema, UserResponseSchema, \
+from src.database.schemas import NewTweetDataSchema, UserSchema, NewTweetResponseSchema, UserWithFollowSchema, \
+    UserResponseSchema, \
     NewMediaResponseSchema, TweetResponseSchema, TweetSchema, LikeSchema, SuccessSchema, ErrorResponseSchema
 
 models_logger = get_logger(__name__)
+
+
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):

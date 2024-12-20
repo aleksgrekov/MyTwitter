@@ -1,14 +1,15 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from uvicorn import run
 
-from database.service import create_tables, delete_tables, async_session
 from logger.logger_setup import get_logger
+from src.database.service import create_tables, delete_tables
 
-from routers.api_router import api_router
-from routers.home_router import home_route
-
+from src.routers.api_router import api_router
+from src.routers.home_router import home_route
 
 main_logger = get_logger(__name__)
 
@@ -18,7 +19,6 @@ async def lifespan(fast_api: FastAPI):
     await delete_tables()
     main_logger.info("База очищена")
     await create_tables()
-    # await populate_database(session=async_session())
     main_logger.info("База заполнена тестовыми данными")
 
     main_logger.info("База готова к работе")
@@ -29,6 +29,7 @@ async def lifespan(fast_api: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.include_router(api_router)
 app.include_router(home_route)
+
 
 app.mount("/css", StaticFiles(directory="../dist/css"), name="css")
 app.mount("/js", StaticFiles(directory="../dist/js"), name="js")

@@ -1,20 +1,20 @@
-import asyncio
-from time import sleep
+import os
+import tempfile
 
 import pytest
 
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool
 from typing import AsyncGenerator
 
-from database.service import create_session, Base
-
+from src.database.models import Base
+from src.database.service import create_session
 from src.main import app
 from tests.prepare_data import generate_users, generate_follows, generate_tweets, generate_likes, test_logger
 
 TEST_DATABASE_URL = "postgresql+asyncpg://user:password@localhost:5432/test_db"
-engine_test = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=StaticPool)
+engine_test = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
 session_test = async_sessionmaker(
     autocommit=False,
     autoflush=False,
@@ -41,8 +41,7 @@ async def teardown_db():
         await conn.run_sync(Base.metadata.drop_all)
 
 
-
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 async def prepare_database():
     await setup_db()
 
@@ -51,7 +50,7 @@ async def prepare_database():
     await teardown_db()
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 async def populate_database(prepare_database) -> None:
     """
     Populates the database with test data.
@@ -84,16 +83,42 @@ async def populate_database(prepare_database) -> None:
             likes = generate_likes(user_ids, tweet_ids)
             session.add_all(likes)
             await session.commit()
-            sleep(5)
+
         except Exception as e:
             test_logger.exception(f"Error while populating the database: {e}")
             raise
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 async def ac() -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(
             transport=ASGITransport(app=app),
             base_url="http://test"
     ) as ac:
         yield ac
+
+
+@pytest.fixture
+def api_key():
+    return {"api-key": "test"}
+
+
+@pytest.fixture
+async def add_tweet(ac, api_key):
+    tweet_data = {
+        "tweet_data": "Test tweet"
+    }
+    response = await ac.post(
+        "/api/tweets",
+        json=tweet_data,
+        headers=api_key
+    )
+    return response
+
+
+@pytest.fixture
+def temp_image():
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as f:
+        f.write(b'fakeimagecontent')
+        yield f.name
+        os.remove(f.name)

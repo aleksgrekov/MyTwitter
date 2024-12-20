@@ -3,8 +3,8 @@ from typing import List
 
 from faker import Faker
 
-from database.models import User, Follow, Tweet, Like
 from logger.logger_setup import get_logger
+from src.database.models import User, Follow, Tweet, Like
 
 NUM_USERS = 10
 NUM_TWEETS = 20
@@ -55,9 +55,12 @@ def generate_follows(user_ids: List[int], num_follows: int = NUM_FOLLOWS) -> Lis
     follows = set()
     while len(follows) < num_follows:
         follower_id, followed_id = random.sample(user_ids, 2)
+
+        if follower_id == 11 and followed_id == 1:
+            continue
+
         follows.add((follower_id, followed_id))
 
-    follows.add((11, 1))
     follow_objects = [Follow(follower_id=f, following_id=t) for f, t in follows]
     test_logger.debug(f"Created {len(follow_objects)} follows.")
     return follow_objects

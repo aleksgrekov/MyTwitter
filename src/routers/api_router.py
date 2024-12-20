@@ -2,14 +2,12 @@ from typing import Annotated, Union
 from fastapi import APIRouter, Header, status, UploadFile, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Like, Media, Tweet, User, Follow
-from database.schemas import (
-    NewTweetDataSchema, UserResponseSchema, TweetResponseSchema,
-    NewMediaResponseSchema, SuccessSchema, ErrorResponseSchema, NewTweetResponseSchema
-)
-from database.service import create_session
+from src.database.models import User, Tweet, Like, Follow, Media
+from src.database.schemas import UserResponseSchema, ErrorResponseSchema, TweetResponseSchema, NewTweetResponseSchema, \
+    NewTweetDataSchema, SuccessSchema, NewMediaResponseSchema
+from src.database.service import create_session
+from src.functions import save_uploaded_file, exception_handler
 from logger.logger_setup import get_logger
-from src.functions import exception_handler, save_uploaded_file
 
 routers_logger = get_logger(__name__)
 api_router = APIRouter(

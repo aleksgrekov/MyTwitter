@@ -60,4 +60,4 @@ async def home_page(request: Request) -> HTMLResponse:
     try:
         return templates.TemplateResponse(request, "index.html", {"request": request})
     except Exception as exc:
-        return exception_handler(routers_logger, exc.__class__.__name__, str(exc))
+        return exception_handler(routers_logger, exc.__class__.__name__, str(exc), return_500=True)

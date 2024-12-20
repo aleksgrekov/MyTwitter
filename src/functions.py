@@ -3,21 +3,27 @@ from pathlib import Path
 
 import aiofiles
 from fastapi import UploadFile
+from fastapi.responses import JSONResponse
 
 from werkzeug.utils import secure_filename
 
-from database.schemas import ErrorResponseSchema
+from src.database.schemas import ErrorResponseSchema
 
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
 
-def exception_handler(logger: Logger, error_type: str, error_message: str):
+def exception_handler(logger: Logger, error_type: str, error_message: str, return_500: bool = False):
     logger.exception(
         "error_type: {error_type}, error_message: {error_message}".format(
             error_type=error_type,
             error_message=error_message
         )
     )
+
+    if return_500:
+        error_response = ErrorResponseSchema(error_type=error_type, error_message=error_message)
+        return JSONResponse(status_code=500, content=error_response.model_dump())
+
     return ErrorResponseSchema(error_type=error_type, error_message=error_message)
 
 
