@@ -1,16 +1,19 @@
-from typing import AsyncGenerator
+import asyncio
+from time import sleep
 
 import pytest
+
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.pool import StaticPool
+from typing import AsyncGenerator
 
 from database.service import create_session, Base
+
 from src.main import app
-from .prepare_data import populate_database
+from tests.prepare_data import generate_users, generate_follows, generate_tweets, generate_likes, test_logger
 
-TEST_DATABASE_URL = "postgresql+asyncpg://admin:admin@localhost:5432/test"
-
+TEST_DATABASE_URL = "postgresql+asyncpg://user:password@localhost:5432/test_db"
 engine_test = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=StaticPool)
 session_test = async_sessionmaker(
     autocommit=False,
@@ -20,12 +23,12 @@ session_test = async_sessionmaker(
 )
 
 
-async def override_get_db():
+async def override_create_session():
     async with session_test() as session:
         yield session
 
 
-app.dependency_overrides[create_session] = override_get_db
+app.dependency_overrides[create_session] = override_create_session
 
 
 async def setup_db():
@@ -38,16 +41,63 @@ async def teardown_db():
         await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="function")
+def event_loop():
+    loop = asyncio.get_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest.fixture(scope="function")
 async def prepare_database():
     await setup_db()
-    await populate_database(session=session_test())
+
     yield
+
     await teardown_db()
 
 
-@pytest.fixture(scope="module")
-async def ac() -> AsyncGenerator[AsyncClient, None]:
+@pytest.fixture(scope="function", autouse=True)
+async def populate_database(prepare_database) -> None:
+    """
+    Populates the database with test data.
+
+    Steps:
+    1. Generates users.
+    2. Generates follows.
+    3. Generates tweets.
+    4. Generates likes.
+    """
+    async with session_test() as session:
+        try:
+            # 1. Generate users
+            users = generate_users()
+            session.add_all(users)
+            await session.flush()
+            user_ids = [user.id for user in users]
+
+            # 2. Generate follows
+            follows = generate_follows(user_ids)
+            session.add_all(follows)
+
+            # 3. Generate tweets
+            tweets = generate_tweets(user_ids)
+            session.add_all(tweets)
+            await session.flush()
+            tweet_ids = [tweet.id for tweet in tweets]
+
+            # 4. Generate likes
+            likes = generate_likes(user_ids, tweet_ids)
+            session.add_all(likes)
+            await session.commit()
+            sleep(5)
+        except Exception as e:
+            test_logger.exception(f"Error while populating the database: {e}")
+            raise
+
+
+@pytest.fixture(scope="function")
+async def ac(event_loop) -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(
             transport=ASGITransport(app=app),
             base_url="http://test"

@@ -9,16 +9,17 @@ from logger.logger_setup import get_logger
 from routers.api_router import api_router
 from routers.home_router import home_route
 
+
 main_logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(fast_api: FastAPI):
-    # await delete_tables()
-    # main_logger.info("База очищена")
+    await delete_tables()
+    main_logger.info("База очищена")
     await create_tables()
     # await populate_database(session=async_session())
-    # main_logger.info("База заполнена тестовыми данными")
+    main_logger.info("База заполнена тестовыми данными")
 
     main_logger.info("База готова к работе")
     yield
@@ -29,9 +30,9 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(api_router)
 app.include_router(home_route)
 
-app.mount("/css", StaticFiles(directory="dist/css"), name="css")
-app.mount("/js", StaticFiles(directory="dist/js"), name="js")
-app.mount("/", StaticFiles(directory="dist"), name="static_root")
+app.mount("/css", StaticFiles(directory="../dist/css"), name="css")
+app.mount("/js", StaticFiles(directory="../dist/js"), name="js")
+app.mount("/", StaticFiles(directory="../dist"), name="static_root")
 
 if __name__ == '__main__':
     run("main:app", port=8000, host='127.0.0.1', reload=True)

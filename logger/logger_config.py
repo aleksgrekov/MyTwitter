@@ -23,7 +23,7 @@ dict_config = {
             "class": "logging.FileHandler",
             "level": "WARNING",
             "formatter": "fileFormatter",
-            "filename": "logger/logfile.log"
+            "filename": "../logger/logfile.log"
         },
     },
     "root": {

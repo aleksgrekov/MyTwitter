@@ -9,7 +9,7 @@ routers_logger = get_logger(__name__)
 home_route = APIRouter(
     tags=["HomePage"],
 )
-templates = Jinja2Templates(directory="dist")
+templates = Jinja2Templates(directory="../dist")
 
 
 @home_route.get(

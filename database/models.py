@@ -11,8 +11,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from logger.logger_setup import get_logger
 from src.functions import exception_handler
 
-from .service import Base
-from .schemas import NewTweetDataSchema, UserSchema, NewTweetResponseSchema, UserWithFollowSchema, UserResponseSchema, \
+from database.service import Base
+from database.schemas import NewTweetDataSchema, UserSchema, NewTweetResponseSchema, UserWithFollowSchema, UserResponseSchema, \
     NewMediaResponseSchema, TweetResponseSchema, TweetSchema, LikeSchema, SuccessSchema, ErrorResponseSchema
 
 models_logger = get_logger(__name__)
