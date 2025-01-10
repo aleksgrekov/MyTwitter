@@ -329,7 +329,7 @@ class Follow(Base):
         )
 
     @classmethod
-    async def get_following_by(cls, username: str, session: AsyncSession) -> Sequence[int]:
+    async def get_following_by(cls, username: str, session: AsyncSession) -> Union[Sequence[int], ErrorResponseSchema]:
         """Get following by username"""
         user_id = await User.get_user_id_by(username, session)
 

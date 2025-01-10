@@ -3,7 +3,7 @@ import pytest
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
 
-from src.database.models import Base, User, Follow
+from src.database.models import Base, User, Follow, Tweet
 from src.database.service import create_session
 from src.main import app
 from src.prepare_data import populate_database
@@ -57,12 +57,14 @@ def get_session_test():
     return session_test()
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="session")
 async def users_and_followers(get_session_test):
     async with get_session_test as session:
         user1 = User(username="test_user1", name="Test User1")
         user2 = User(username="test_user2", name="Test User2")
-        session.add_all([user1, user2])
+        user3 = User(username="test_user3", name="Test User3")
+
+        session.add_all([user1, user2, user3])
         await session.flush()
 
         follow1 = Follow(follower_id=user1.id, following_id=user2.id)
@@ -71,4 +73,15 @@ async def users_and_followers(get_session_test):
         session.add_all([follow1, follow2])
         await session.commit()
 
-        return user1, user2
+        return user1, user2, user3
+
+
+@pytest.fixture(scope='class')
+async def test_tweet(get_session_test, users_and_followers):
+    async with get_session_test as session:
+        tweet = Tweet(author_id=users_and_followers[0].id, tweet_data="Hello, world!", tweet_media_ids=[])
+        session.add(tweet)
+        await session.commit()
+        await session.refresh(tweet)
+
+        return tweet
