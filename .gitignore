@@ -4,4 +4,4 @@ media
 
 *.pdf
 *.log
-
+.coverage

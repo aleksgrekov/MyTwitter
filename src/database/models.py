@@ -8,7 +8,7 @@ from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from logger.logger_setup import get_logger
+from src.logger_setup import get_logger
 from src.functions import exception_handler
 
 from src.database.schemas import NewTweetDataSchema, UserSchema, NewTweetResponseSchema, UserWithFollowSchema, \

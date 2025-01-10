@@ -15,7 +15,7 @@ dict_config = {
     "handlers": {
         "stream": {
             "class": "logging.StreamHandler",
-            "level": "DEBUG",
+            "level": "INFO",
             "formatter": "consoleFormatter",
             "stream": sys.stdout
         },
@@ -23,7 +23,7 @@ dict_config = {
             "class": "logging.FileHandler",
             "level": "WARNING",
             "formatter": "fileFormatter",
-            "filename": "../logger/logfile.log"
+            "filename": "../logs/logfile.log"
         },
     },
     "root": {

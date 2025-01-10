@@ -7,7 +7,7 @@ from src.database.schemas import UserResponseSchema, ErrorResponseSchema, TweetR
     NewTweetDataSchema, SuccessSchema, NewMediaResponseSchema
 from src.database.service import create_session
 from src.functions import save_uploaded_file, exception_handler
-from logger.logger_setup import get_logger
+from src.logger_setup import get_logger
 
 routers_logger = get_logger(__name__)
 api_router = APIRouter(

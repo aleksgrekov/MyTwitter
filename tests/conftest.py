@@ -1,17 +1,12 @@
-import os
-import tempfile
-
 import pytest
 
-from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
-from typing import AsyncGenerator
 
-from src.database.models import Base
+from src.database.models import Base, User, Follow
 from src.database.service import create_session
 from src.main import app
-from tests.prepare_data import generate_users, generate_follows, generate_tweets, generate_likes, test_logger
+from src.prepare_data import populate_database
 
 TEST_DATABASE_URL = "postgresql+asyncpg://user:password@localhost:5432/test_db"
 engine_test = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
@@ -43,6 +38,7 @@ async def teardown_db():
 
 @pytest.fixture(scope="session")
 async def prepare_database():
+    await teardown_db()
     await setup_db()
 
     yield
@@ -50,75 +46,29 @@ async def prepare_database():
     await teardown_db()
 
 
-@pytest.fixture(scope="session", autouse=True)
-async def populate_database(prepare_database) -> None:
-    """
-    Populates the database with test data.
-
-    Steps:
-    1. Generates users.
-    2. Generates follows.
-    3. Generates tweets.
-    4. Generates likes.
-    """
+@pytest.fixture(scope="session")
+async def populate_database_fixture(prepare_database) -> None:
     async with session_test() as session:
-        try:
-            # 1. Generate users
-            users = generate_users()
-            session.add_all(users)
-            await session.flush()
-            user_ids = [user.id for user in users]
-
-            # 2. Generate follows
-            follows = generate_follows(user_ids)
-            session.add_all(follows)
-
-            # 3. Generate tweets
-            tweets = generate_tweets(user_ids)
-            session.add_all(tweets)
-            await session.flush()
-            tweet_ids = [tweet.id for tweet in tweets]
-
-            # 4. Generate likes
-            likes = generate_likes(user_ids, tweet_ids)
-            session.add_all(likes)
-            await session.commit()
-
-        except Exception as e:
-            test_logger.exception(f"Error while populating the database: {e}")
-            raise
+        await populate_database(session)
 
 
-@pytest.fixture
-async def ac() -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient(
-            transport=ASGITransport(app=app),
-            base_url="http://test"
-    ) as ac:
-        yield ac
+@pytest.fixture(scope='session')
+def get_session_test():
+    return session_test()
 
 
-@pytest.fixture
-def api_key():
-    return {"api-key": "test"}
+@pytest.fixture(scope="class")
+async def users_and_followers(get_session_test):
+    async with get_session_test as session:
+        user1 = User(username="test_user1", name="Test User1")
+        user2 = User(username="test_user2", name="Test User2")
+        session.add_all([user1, user2])
+        await session.flush()
 
+        follow1 = Follow(follower_id=user1.id, following_id=user2.id)
+        follow2 = Follow(follower_id=user2.id, following_id=user1.id)
 
-@pytest.fixture
-async def add_tweet(ac, api_key):
-    tweet_data = {
-        "tweet_data": "Test tweet"
-    }
-    response = await ac.post(
-        "/api/tweets",
-        json=tweet_data,
-        headers=api_key
-    )
-    return response
+        session.add_all([follow1, follow2])
+        await session.commit()
 
-
-@pytest.fixture
-def temp_image():
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as f:
-        f.write(b'fakeimagecontent')
-        yield f.name
-        os.remove(f.name)
+        return user1, user2
