@@ -1,7 +1,7 @@
 # import os
 from typing import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.database.models import Base
 
@@ -11,19 +11,16 @@ from src.database.models import Base
 # DATABASE_PORT = os.getenv('DATABASE_PORT')
 # DATABASE_NAME = os.getenv('DATABASE_NAME')
 
-DATABASE_USER = 'admin'
-DATABASE_PASSWORD = 'admin'
-DATABASE_HOST = 'localhost'
-DATABASE_PORT = '5433'
-DATABASE_NAME = 'my_twitter'
+DATABASE_USER = "admin"
+DATABASE_PASSWORD = "admin"
+DATABASE_HOST = "localhost"
+DATABASE_PORT = "5433"
+DATABASE_NAME = "my_twitter"
 
 DATABASE_URL = f"postgresql+asyncpg://{DATABASE_USER}:{DATABASE_PASSWORD}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
 
-engine = create_async_engine(DATABASE_URL, echo=False)
-async_session = async_sessionmaker(
-    engine,
-    expire_on_commit=False
-)
+engine = create_async_engine(DATABASE_URL)
+async_session = async_sessionmaker(engine, expire_on_commit=False)
 
 
 async def create_session() -> AsyncGenerator[AsyncSession, None]:

@@ -2,8 +2,8 @@ from logging import Logger
 
 import pytest
 
-from src.database.schemas import ErrorResponseSchema
-from src.functions import exception_handler, allowed_file
+from src.database.schemas.base import ErrorResponseSchema
+from src.functions import allowed_file, exception_handler
 
 
 def test_exception_handler(mocker):
@@ -22,12 +22,15 @@ def test_exception_handler(mocker):
     assert result.error_message == error_message
 
 
-@pytest.mark.parametrize("filename, expected", [
-    ("document.pdf", True),
-    ("image.jpeg", True),
-    ("archive.zip", False),
-    ("file_without_extension", False),
-    (".hiddenfile", False),
-])
+@pytest.mark.parametrize(
+    "filename, expected",
+    [
+        ("document.pdf", True),
+        ("image.jpeg", True),
+        ("archive.zip", False),
+        ("file_without_extension", False),
+        (".hiddenfile", False),
+    ],
+)
 def test_allowed_file(filename, expected):
     assert allowed_file(filename) == expected

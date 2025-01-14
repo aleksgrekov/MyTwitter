@@ -1,9 +1,8 @@
 import pytest
-
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from src.database.models import Base, User, Follow, Tweet
+from src.database.models import Base, Follow, Tweet, User
 from src.database.service import create_session
 from src.main import app
 from src.prepare_data import populate_database
@@ -11,10 +10,7 @@ from src.prepare_data import populate_database
 TEST_DATABASE_URL = "postgresql+asyncpg://user:password@localhost:5432/test_db"
 engine_test = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
 session_test = async_sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine_test,
-    expire_on_commit=False
+    autocommit=False, autoflush=False, bind=engine_test, expire_on_commit=False
 )
 
 
@@ -52,7 +48,7 @@ async def populate_database_fixture(prepare_database) -> None:
         await populate_database(session)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def get_session_test():
     return session_test()
 
@@ -76,10 +72,14 @@ async def users_and_followers(get_session_test):
         return user1, user2, user3
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope="class")
 async def test_tweet(get_session_test, users_and_followers):
     async with get_session_test as session:
-        tweet = Tweet(author_id=users_and_followers[0].id, tweet_data="Hello, world!", tweet_media_ids=[])
+        tweet = Tweet(
+            author_id=users_and_followers[0].id,
+            tweet_data="Hello, world!",
+            tweet_media_ids=[],
+        )
         session.add(tweet)
         await session.commit()
         await session.refresh(tweet)

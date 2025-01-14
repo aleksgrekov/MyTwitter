@@ -1,10 +1,11 @@
 import random
-from typing import List
+from typing import List, Set, Tuple
+
 from faker import Faker
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.database.models import Follow, Like, Tweet, User
 from src.logger_setup import get_logger
-from src.database.models import User, Follow, Tweet, Like
 
 faker = Faker()
 prepare_data_logger = get_logger(__name__)
@@ -15,10 +16,7 @@ NUM_LIKES = 30
 NUM_FOLLOWS = 15
 
 
-def generate_users(num_users: int = NUM_USERS) -> List[User]:
-    """
-    Generates a list of users, ensuring unique usernames.
-    """
+def generate_users(num_users: int = NUM_USERS) -> List["User"]:
     users = dict()
     for _ in range(num_users):
         first_name = faker.first_name()
@@ -27,37 +25,41 @@ def generate_users(num_users: int = NUM_USERS) -> List[User]:
         username = "{}{}".format(first_name.lower()[:1], last_name.lower())
         name = "{} {}".format(first_name, last_name)
         users[username] = name
+
     users["test"] = "Test User"
 
     prepare_data_logger.info(f"Created {len(users)} users.")
-    return [User(username=u, name=n) for u, n in users.items()]
+    return [User(username=username, name=name) for username, name in users.items()]
 
 
-def generate_follows(user_ids: List[int], num_follows: int = NUM_FOLLOWS) -> List[Follow]:
-    """
-    Generates unique follows between users.
-    """
+def generate_follows(
+    user_ids: List[int], num_follows: int = NUM_FOLLOWS
+) -> List["Follow"]:
     test_user_id = NUM_USERS + 1
 
-    follows = set()
+    follows: Set[Tuple[int, ...]] = set()
     while len(follows) < num_follows:
         pair = tuple(random.sample(user_ids, 2))
         if pair == (test_user_id, 1):
             continue
         follows.add(pair)
+
     follows.add((test_user_id, 2))
 
     prepare_data_logger.info(f"Created {len(follows)} follows.")
-    return [Follow(follower_id=follower, following_id=following) for follower, following in follows]
+    return [
+        Follow(follower_id=follower, following_id=following)
+        for follower, following in follows
+    ]
 
 
-def generate_tweets(user_ids: List[int], num_tweets: int = NUM_TWEETS) -> List[Tweet]:
-    """
-    Generates tweets from random users.
-    """
-
+def generate_tweets(user_ids: List[int], num_tweets: int = NUM_TWEETS) -> List["Tweet"]:
     tweets = [
-        Tweet(author_id=random.choice(user_ids), tweet_data=faker.sentence(), tweet_media_ids=[])
+        Tweet(
+            author_id=random.choice(user_ids),
+            tweet_data=faker.sentence(),
+            tweet_media_ids=[],
+        )
         for _ in range(num_tweets)
     ]
     tweets.append(Tweet(author_id=2, tweet_data=faker.sentence(), tweet_media_ids=[]))
@@ -65,17 +67,16 @@ def generate_tweets(user_ids: List[int], num_tweets: int = NUM_TWEETS) -> List[T
     return tweets
 
 
-def generate_likes(user_ids: List[int], tweet_ids: List[int], num_likes: int = NUM_LIKES) -> List[Like]:
-    """
-    Generates likes from random users for random tweets.
-    """
-    likes = set()
+def generate_likes(
+    user_ids: List[int], tweet_ids: List[int], num_likes: int = NUM_LIKES
+) -> List["Like"]:
+    likes: Set[Tuple[int, ...]] = set()
     while len(likes) < num_likes:
         pair = (random.choice(user_ids), random.choice(tweet_ids))
         likes.add(pair)
 
     prepare_data_logger.info(f"Created {len(likes)} likes.")
-    return [Like(user_id=u, tweet_id=t) for u, t in likes]
+    return [Like(user_id=user_id, tweet_id=tweet_id) for user_id, tweet_id in likes]
 
 
 async def populate_database(session: AsyncSession) -> None:
@@ -101,6 +102,6 @@ async def populate_database(session: AsyncSession) -> None:
         session.add_all(likes)
         await session.commit()
 
-    except Exception as e:
-        prepare_data_logger.exception(f"Error while populating the database: {e}")
+    except Exception as exc:
+        prepare_data_logger.exception(f"Error while populating the database: {exc}")
         raise

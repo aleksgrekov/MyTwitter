@@ -1,11 +1,20 @@
-import logging.config
+import logging
+from logging.config import dictConfig
 
 from src.logger_config import dict_config
 
 
 def get_logger(name):
-    logging.config.dictConfig(dict_config)
+    """
+    Initializes and returns a logger instance configured
+    with a predefined configuration.
 
-    logger = logging.getLogger(name)
+    Args:
+        name (str): The name of the logger.
 
-    return logger
+    Returns:
+        logging.Logger: A logger instance with the specified name.
+    """
+    dictConfig(dict_config)
+
+    return logging.getLogger(name)
