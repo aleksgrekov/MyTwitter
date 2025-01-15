@@ -4,12 +4,12 @@ from fastapi import APIRouter, Depends, Header, UploadFile, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.repositories.media import add_media
-from src.database.schemas.base import ErrorResponseSchema
-from src.database.schemas.tweet import NewMediaResponseSchema
+from src.database.repositories.media_repository import add_media
 from src.database.service import create_session
 from src.functions import exception_handler, save_uploaded_file
 from src.logger_setup import get_logger
+from src.schemas.base_schemas import ErrorResponseSchema
+from src.schemas.tweet_schemas import NewMediaResponseSchema
 
 routers_logger = get_logger(__name__)
 media_router = APIRouter(

@@ -2,10 +2,10 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.database.schemas.base import SuccessSchema
-from src.database.schemas.const import TWEET_LENGTH
-from src.database.schemas.like import LikeSchema
-from src.database.schemas.user import UserSchema
+from src.schemas.base_schemas import SuccessSchema
+from src.schemas.const import TWEET_LENGTH
+from src.schemas.like_schemas import LikeSchema
+from src.schemas.user_schemas import UserSchema
 
 
 class TweetBaseSchema(BaseModel):
@@ -21,7 +21,7 @@ class TweetBaseSchema(BaseModel):
             "Check out our new feature! #Update",
         ],
     )
-    tweet_media_ids: Optional[List[int]] = Field(..., title="List of media IDs")
+    tweet_media_ids: List[int] = Field(..., title="List of media IDs")
 
 
 class NewTweetResponseSchema(SuccessSchema):

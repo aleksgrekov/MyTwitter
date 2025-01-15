@@ -5,7 +5,7 @@ import aiofiles
 from fastapi import UploadFile
 from werkzeug.utils import secure_filename
 
-from src.database.schemas.base import ErrorResponseSchema
+from src.schemas.base_schemas import ErrorResponseSchema
 
 
 def exception_handler(logger: Logger, error_type: str, error_message: str):
@@ -20,7 +20,7 @@ def exception_handler(logger: Logger, error_type: str, error_message: str):
     Returns:
         ErrorResponseSchema: A schema representing the error details.
     """
-    logger.exception("error_type: %s, error_message: %s", error_type, error_message)
+    logger.exception("error_type: %s, error_message: %s" % (error_type, error_message))
 
     return ErrorResponseSchema(
         result=False, error_type=error_type, error_message=error_message

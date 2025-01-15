@@ -2,13 +2,14 @@ import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from src.database.config import settings
 from src.database.models import Base, Follow, Tweet, User
 from src.database.service import create_session
 from src.main import app
 from src.prepare_data import populate_database
 
-TEST_DATABASE_URL = "postgresql+asyncpg://user:password@localhost:5432/test_db"
-engine_test = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
+TEST_DATABASE_URL = settings.get_db_url
+engine_test = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
 session_test = async_sessionmaker(
     autocommit=False, autoflush=False, bind=engine_test, expire_on_commit=False
 )
@@ -34,7 +35,7 @@ async def teardown_db():
 
 @pytest.fixture(scope="session")
 async def prepare_database():
-    await teardown_db()
+    assert settings.MODE == "TEST"
     await setup_db()
 
     yield

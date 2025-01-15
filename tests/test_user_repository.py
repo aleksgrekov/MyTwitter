@@ -1,8 +1,14 @@
 import pytest
 
-from src.database.repositories.user import UserRepository
-from src.database.schemas.base import ErrorResponseSchema
-from src.database.schemas.user import UserResponseSchema
+from src.database.repositories.user_repository import (
+    get_user_followers,
+    get_user_following,
+    get_user_id_by,
+    get_user_with_followers_and_following,
+    is_user_exist,
+)
+from src.schemas.base_schemas import ErrorResponseSchema
+from src.schemas.user_schemas import UserResponseSchema
 
 
 @pytest.mark.usefixtures("prepare_database")
@@ -16,33 +22,29 @@ class TestUserModel:
 
     async def test_check_user_exists(self, users_and_followers, get_session_test):
         async with get_session_test as session:
-            exists = await UserRepository.is_user_exist(
+            exists = await is_user_exist(
                 user_id=users_and_followers[0].id, session=session
             )
             assert exists
 
-            not_exists = await UserRepository.is_user_exist(100, session)
+            not_exists = await is_user_exist(100, session)
             assert not not_exists
 
     async def test_get_user_id_by(self, users_and_followers, get_session_test):
         async with get_session_test as session:
-            user_id = await UserRepository.get_user_id_by("test_user1", session)
+            user_id = await get_user_id_by("test_user1", session)
             assert user_id == users_and_followers[0].id
 
     async def test_get_user_followers(self, users_and_followers, get_session_test):
         async with get_session_test as session:
-            followers = await UserRepository.get_user_followers(
-                users_and_followers[0].id, session
-            )
+            followers = await get_user_followers(users_and_followers[0].id, session)
             assert isinstance(followers, list)
             assert followers
             assert followers[0].id == users_and_followers[1].id
 
     async def test_get_user_following(self, users_and_followers, get_session_test):
         async with get_session_test as session:
-            following = await UserRepository.get_user_following(
-                users_and_followers[0].id, session
-            )
+            following = await get_user_following(users_and_followers[0].id, session)
             assert isinstance(following, list)
             assert following
             assert following[0].id is not None
@@ -53,11 +55,11 @@ class TestUserModel:
     ):
         async with get_session_test as session:
             if lookup_by == "username":
-                response = await UserRepository.get_user_with_followers_and_following(
+                response = await get_user_with_followers_and_following(
                     session, username=users_and_followers[0].username
                 )
             elif lookup_by == "user_id":
-                response = await UserRepository.get_user_with_followers_and_following(
+                response = await get_user_with_followers_and_following(
                     session, user_id=users_and_followers[0].id
                 )
 
@@ -72,9 +74,7 @@ class TestUserModel:
         self, get_session_test
     ):
         async with get_session_test as session:
-            response = await UserRepository.get_user_with_followers_and_following(
-                session
-            )
+            response = await get_user_with_followers_and_following(session)
 
             self.assert_error_response(
                 response, "Missing one of argument (username or user_id)"
@@ -86,7 +86,7 @@ class TestUserModel:
         async with get_session_test as session:
             username = "non_existent_user"
 
-            response = await UserRepository.get_user_with_followers_and_following(
+            response = await get_user_with_followers_and_following(
                 session, username=username
             )
 

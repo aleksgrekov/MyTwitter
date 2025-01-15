@@ -5,6 +5,7 @@ from typing import AsyncGenerator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from jinja2 import TemplateNotFound
 from werkzeug.exceptions import InternalServerError
 
 from src.main import app
@@ -25,7 +26,7 @@ class TestApi:
 
     @pytest.fixture(scope="function")
     async def add_tweet(self, ac, api_key):
-        tweet_data = {"tweet_data": "Test tweet"}
+        tweet_data = {"tweet_data": "Test tweet", "tweet_media_ids": []}
         return await ac.post("/api/tweets", json=tweet_data, headers=api_key)
 
     @pytest.fixture(scope="class")
@@ -166,19 +167,32 @@ class TestApi:
 
         assert response.status_code == 200
 
-    async def test_homepage_error(self, ac, mocker):
+    async def test_homepage_os_error(self, ac, mocker):
         """Тест для обработки ошибки рендеринга"""
 
         mocker.patch(
             "fastapi.templating.Jinja2Templates.TemplateResponse",
-            side_effect=InternalServerError("Mock exception"),
+            side_effect=OSError("Mock exception"),
         )
 
         response = await ac.get("/")
-        assert response.status_code == 500
+        assert response.status_code == 422
         error_data = response.json()
         assert error_data["result"] is False
-        assert error_data["error_type"] == "InternalServerError"
-        assert (
-            error_data["error_message"] == "500 Internal Server Error: Mock exception"
+        assert error_data["error_type"] == "OSError"
+        assert error_data["error_message"] == "Mock exception"
+
+    async def test_homepage_template_error(self, ac, mocker):
+        """Тест для обработки ошибки рендеринга"""
+
+        mocker.patch(
+            "fastapi.templating.Jinja2Templates.TemplateResponse",
+            side_effect=TemplateNotFound("Mock exception"),
         )
+
+        response = await ac.get("/")
+        assert response.status_code == 404
+        error_data = response.json()
+        assert error_data["result"] is False
+        assert error_data["error_type"] == "TemplateNotFound"
+        assert error_data["error_message"] == "Mock exception"

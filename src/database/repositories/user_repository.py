@@ -4,14 +4,14 @@ from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.models import Follow, User
-from src.database.schemas.base import ErrorResponseSchema
-from src.database.schemas.user import (
+from src.functions import exception_handler
+from src.logger_setup import get_logger
+from src.schemas.base_schemas import ErrorResponseSchema
+from src.schemas.user_schemas import (
     UserResponseSchema,
     UserSchema,
     UserWithFollowSchema,
 )
-from src.functions import exception_handler
-from src.logger_setup import get_logger
 
 user_rep_logger = get_logger(__name__)
 
@@ -19,7 +19,8 @@ user_rep_logger = get_logger(__name__)
 async def is_user_exist(user_id: int, session: AsyncSession) -> bool:
     """Check if a user exists by their ID."""
     query = select(exists().where(User.id == user_id))
-    return await session.scalar(query)
+    response = await session.scalar(query)
+    return response is not None and response
 
 
 async def get_user_id_by(username: str, session: AsyncSession) -> Optional[int]:

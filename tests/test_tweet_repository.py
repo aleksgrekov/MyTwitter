@@ -1,9 +1,15 @@
 import pytest
 
 from src.database.models import Tweet
-from src.database.repositories.tweet import TweetRepository
-from src.database.schemas.base import ErrorResponseSchema, SuccessSchema
-from src.database.schemas.tweet import (
+from src.database.repositories.tweet_repository import (
+    add_tweet,
+    collect_tweet_data,
+    delete_tweet,
+    get_tweets_selection,
+    is_tweet_exist,
+)
+from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
+from src.schemas.tweet_schemas import (
     NewTweetResponseSchema,
     TweetBaseSchema,
     TweetResponseSchema,
@@ -21,12 +27,10 @@ class TestTweetModel:
 
     async def test_is_tweet_exist(self, get_session_test, test_tweet):
         async with get_session_test as session:
-            exists = await TweetRepository.is_tweet_exist(
-                tweet_id=test_tweet.id, session=session
-            )
+            exists = await is_tweet_exist(tweet_id=test_tweet.id, session=session)
             assert exists is True
 
-            non_exists = await TweetRepository.is_tweet_exist(
+            non_exists = await is_tweet_exist(
                 tweet_id=999, session=session
             )  # Non-existent tweet ID
             assert non_exists is False
@@ -36,7 +40,7 @@ class TestTweetModel:
             username = users_and_followers[0].username
             tweet_data = TweetBaseSchema(tweet_data="Hello, world!", tweet_media_ids=[])
 
-            response = await TweetRepository.add_tweet(
+            response = await add_tweet(
                 username=username, tweet=tweet_data, session=session
             )
 
@@ -48,7 +52,7 @@ class TestTweetModel:
             username = "non_existent_user"
             tweet_data = TweetBaseSchema(tweet_data="Hello, world!", tweet_media_ids=[])
 
-            response = await TweetRepository.add_tweet(
+            response = await add_tweet(
                 username=username, tweet=tweet_data, session=session
             )
 
@@ -63,7 +67,7 @@ class TestTweetModel:
             username = users_and_followers[0].username
             tweet_id = test_tweet.id
 
-            response = await TweetRepository.delete_tweet(
+            response = await delete_tweet(
                 username=username, tweet_id=tweet_id, session=session
             )
 
@@ -74,7 +78,7 @@ class TestTweetModel:
             username = users_and_followers[0].username
             tweet_id = 999
 
-            response = await TweetRepository.delete_tweet(
+            response = await delete_tweet(
                 username=username, tweet_id=tweet_id, session=session
             )
 
@@ -82,9 +86,7 @@ class TestTweetModel:
 
     async def test_collect_tweet_data(self, get_session_test, test_tweet):
         async with get_session_test as session:
-            tweet_data = await TweetRepository.collect_tweet_data(
-                tweet=test_tweet, session=session
-            )
+            tweet_data = await collect_tweet_data(tweet=test_tweet, session=session)
 
             assert tweet_data.id == test_tweet.id
             assert tweet_data.content == test_tweet.tweet_data
@@ -104,9 +106,7 @@ class TestTweetModel:
             await session.commit()
 
             username = users_and_followers[0].username
-            response = await TweetRepository.get_tweets_selection(
-                username=username, session=session
-            )
+            response = await get_tweets_selection(username=username, session=session)
 
             assert isinstance(response, TweetResponseSchema)
             assert len(response.tweets) > 0
@@ -115,9 +115,7 @@ class TestTweetModel:
         async with get_session_test as session:
             username = "non_existent_user"
 
-            response = await TweetRepository.get_tweets_selection(
-                username=username, session=session
-            )
+            response = await get_tweets_selection(username=username, session=session)
 
             self.assert_error_response(
                 response, "User with this username does not exist"

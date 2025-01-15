@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -20,25 +21,28 @@ async def lifespan(fast_api: FastAPI):
     await delete_tables()
     main_logger.info("База очищена")
     await create_tables()
-    main_logger.info("База заполнена тестовыми данными")
 
     async with async_session() as session:
         await populate_database(session)
+    main_logger.info("База заполнена тестовыми данными")
 
     main_logger.info("База готова к работе")
     yield
     main_logger.info("Выключение")
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, title="Twitter Clone API", version="1.0.0")
+
 app.include_router(user_router)
 app.include_router(tweet_router)
 app.include_router(media_router)
 app.include_router(home_route)
 
-app.mount("/css", StaticFiles(directory="../dist/css"), name="css")
-app.mount("/js", StaticFiles(directory="../dist/js"), name="js")
-app.mount("/", StaticFiles(directory="../dist"), name="static_root")
+path_to_dist = Path(__file__).resolve().parent.parent / "dist"
+
+app.mount("/css", StaticFiles(directory=path_to_dist / "css"), name="css")
+app.mount("/js", StaticFiles(directory=path_to_dist / "js"), name="js")
+app.mount("/", StaticFiles(directory=path_to_dist), name="static_root")
 
 if __name__ == "__main__":
-    run("main:app", host="127.0.0.1", reload=True)
+    run("main:app", host="0.0.0.0")

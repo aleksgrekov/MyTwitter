@@ -2,8 +2,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.database.schemas.base import SuccessSchema
-from src.database.schemas.const import USERS_NAME_LENGTH
+from src.schemas.base_schemas import SuccessSchema
+from src.schemas.const import USERS_NAME_LENGTH
 
 
 class UserSchema(BaseModel):

@@ -2,8 +2,8 @@ from logging import Logger
 
 import pytest
 
-from src.database.schemas.base import ErrorResponseSchema
 from src.functions import allowed_file, exception_handler
+from src.schemas.base_schemas import ErrorResponseSchema
 
 
 def test_exception_handler(mocker):

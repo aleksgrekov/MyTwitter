@@ -1,7 +1,11 @@
 import pytest
 
-from src.database.repositories.follow import FollowRepository
-from src.database.schemas.base import ErrorResponseSchema, SuccessSchema
+from src.database.repositories.follow_repository import (
+    delete_follow,
+    follow,
+    get_following_by,
+)
+from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
 
 
 @pytest.mark.usefixtures("prepare_database")
@@ -15,12 +19,12 @@ class TestFollowModel:
 
     async def test_get_following_by(self, get_session_test, users_and_followers):
         async with get_session_test as session:
-            followings = await FollowRepository.get_following_by(
+            followings = await get_following_by(
                 username=users_and_followers[0].username, session=session
             )
             assert users_and_followers[1].id in followings
 
-            no_followings = await FollowRepository.get_following_by(
+            no_followings = await get_following_by(
                 username="nonexistent_user", session=session
             )
 
@@ -30,7 +34,7 @@ class TestFollowModel:
 
     async def test_follow_success(self, get_session_test, users_and_followers):
         async with get_session_test as session:
-            response = await FollowRepository.follow(
+            response = await follow(
                 username=users_and_followers[0].username,
                 following_id=users_and_followers[2].id,
                 session=session,
@@ -39,7 +43,7 @@ class TestFollowModel:
 
     async def test_follow_user_not_found(self, get_session_test, users_and_followers):
         async with get_session_test as session:
-            response = await FollowRepository.follow(
+            response = await follow(
                 username="nonexistent_user",
                 following_id=users_and_followers[1].id,
                 session=session,
@@ -53,7 +57,7 @@ class TestFollowModel:
         self, get_session_test, users_and_followers
     ):
         async with get_session_test as session:
-            response = await FollowRepository.follow(
+            response = await follow(
                 username=users_and_followers[0].username,
                 following_id=999,
                 session=session,
@@ -63,7 +67,7 @@ class TestFollowModel:
 
     async def test_remove_follow_success(self, get_session_test, users_and_followers):
         async with get_session_test as session:
-            response = await FollowRepository.remove_follow(
+            response = await delete_follow(
                 username=users_and_followers[0].username,
                 following_id=users_and_followers[2].id,
                 session=session,
@@ -74,7 +78,7 @@ class TestFollowModel:
         self, get_session_test, users_and_followers
     ):
         async with get_session_test as session:
-            response = await FollowRepository.remove_follow(
+            response = await delete_follow(
                 username="nonexistent_user",
                 following_id=users_and_followers[2].id,
                 session=session,
@@ -88,7 +92,7 @@ class TestFollowModel:
         self, get_session_test, users_and_followers
     ):
         async with get_session_test as session:
-            response = await FollowRepository.remove_follow(
+            response = await delete_follow(
                 username=users_and_followers[0].username,
                 following_id=999,
                 session=session,
@@ -98,7 +102,7 @@ class TestFollowModel:
 
     async def test_remove_follow_not_found(self, get_session_test, users_and_followers):
         async with get_session_test as session:
-            response = await FollowRepository.remove_follow(
+            response = await delete_follow(
                 username=users_and_followers[0].username,
                 following_id=users_and_followers[2].id,
                 session=session,

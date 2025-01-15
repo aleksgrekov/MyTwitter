@@ -5,10 +5,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.models import Media
-from src.database.schemas.base import ErrorResponseSchema
-from src.database.schemas.tweet import NewMediaResponseSchema
 from src.functions import exception_handler
 from src.logger_setup import get_logger
+from src.schemas.base_schemas import ErrorResponseSchema
+from src.schemas.tweet_schemas import NewMediaResponseSchema
 
 media_rep_logger = get_logger(__name__)
 

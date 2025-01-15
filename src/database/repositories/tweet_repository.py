@@ -5,19 +5,19 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.models import Follow, Tweet
-from src.database.repositories.media import get_media_link_by
-from src.database.repositories.user import get_user_id_by
-from src.database.schemas.base import ErrorResponseSchema, SuccessSchema
-from src.database.schemas.like import LikeSchema
-from src.database.schemas.tweet import (
+from src.database.repositories.media_repository import get_media_link_by
+from src.database.repositories.user_repository import get_user_id_by
+from src.functions import exception_handler
+from src.logger_setup import get_logger
+from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
+from src.schemas.like_schemas import LikeSchema
+from src.schemas.tweet_schemas import (
     NewTweetResponseSchema,
     TweetBaseSchema,
     TweetResponseSchema,
     TweetSchema,
 )
-from src.database.schemas.user import UserSchema
-from src.functions import exception_handler
-from src.logger_setup import get_logger
+from src.schemas.user_schemas import UserSchema
 
 tweet_rep_logger = get_logger(__name__)
 
@@ -42,7 +42,8 @@ async def collect_tweet_data(tweet: "Tweet", session: AsyncSession) -> TweetSche
 async def is_tweet_exist(tweet_id: int, session: AsyncSession) -> bool:
     """Check if a tweet exists by its ID."""
     query = select(exists().where(Tweet.id == tweet_id))
-    return await session.scalar(query)
+    response = await session.scalar(query)
+    return response is not None and response
 
 
 async def get_tweets_selection(
@@ -98,7 +99,8 @@ async def delete_tweet(
     """Delete a tweet."""
     user_id = await get_user_id_by(username, session)
     if not user_id:
-        return exception_handler(
+        status_code = 404
+        return status_code, exception_handler(
             tweet_rep_logger,
             ValueError.__class__.__name__,
             "User with this username does not exist",
@@ -111,7 +113,8 @@ async def delete_tweet(
     )
     request = await session.execute(query)
     if not request.fetchone():
-        return exception_handler(
+        status_code = 404
+        return status_code, exception_handler(
             tweet_rep_logger,
             ValueError.__class__.__name__,
             "Tweet with this ID does not exist",
@@ -121,6 +124,8 @@ async def delete_tweet(
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
-        return exception_handler(tweet_rep_logger, exc.__class__.__name__, str(exc))
+        status_code = 404
+        return status_code, exception_handler(tweet_rep_logger, exc.__class__.__name__, str(exc))
 
-    return SuccessSchema()
+    status_code = 200
+    return status_code, SuccessSchema()

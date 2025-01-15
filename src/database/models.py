@@ -8,7 +8,8 @@ DELETE_CASCADE = "all, delete-orphan"
 USER_ID_FK = "users.id"
 
 
-class Base(DeclarativeBase): ...
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):

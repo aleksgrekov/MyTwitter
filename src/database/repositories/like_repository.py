@@ -5,20 +5,21 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.models import Like
-from src.database.repositories.tweet import is_tweet_exist
-from src.database.repositories.user import get_user_id_by
-from src.database.schemas.base import ErrorResponseSchema, SuccessSchema
+from src.database.repositories.tweet_repository import is_tweet_exist
+from src.database.repositories.user_repository import get_user_id_by
 from src.functions import exception_handler
 from src.logger_setup import get_logger
+from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
 
 like_rep_logger = get_logger(__name__)
 
 
 async def is_like_exist(user_id: int, tweet_id: int, session: AsyncSession) -> bool:
     """Check if a like exists for a tweet by a user."""
-    return await session.scalar(
-        select(exists().where(Like.user_id == user_id, Like.tweet_id == tweet_id))
-    )
+    subquery = exists().where(Like.user_id == user_id, Like.tweet_id == tweet_id)
+    query = select(subquery)
+    response = await session.scalar(query)
+    return response is not None and response
 
 
 async def add_like(

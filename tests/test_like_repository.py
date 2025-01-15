@@ -1,8 +1,12 @@
 import pytest
 
 from src.database.models import Like, Tweet
-from src.database.repositories.like import LikeRepository
-from src.database.schemas.base import ErrorResponseSchema, SuccessSchema
+from src.database.repositories.like_repository import (
+    add_like,
+    delete_like,
+    is_like_exist,
+)
+from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
 
 
 @pytest.mark.usefixtures("prepare_database")
@@ -26,16 +30,14 @@ class TestLikeModel:
         self, get_session_test, users_and_followers, test_tweet, test_like
     ):
         async with get_session_test as session:
-            exists = await LikeRepository.is_like_exist(
+            exists = await is_like_exist(
                 user_id=users_and_followers[0].id,
                 tweet_id=test_tweet.id,
                 session=session,
             )
             assert exists is True
 
-            not_exists = await LikeRepository.is_like_exist(
-                user_id=999, tweet_id=999, session=session
-            )
+            not_exists = await is_like_exist(user_id=999, tweet_id=999, session=session)
             assert not_exists is False
 
     async def test_add_like_success(self, get_session_test, users_and_followers):
@@ -48,7 +50,7 @@ class TestLikeModel:
             session.add(tweet)
             await session.commit()
 
-            response = await LikeRepository.add_like(
+            response = await add_like(
                 username=users_and_followers[0].username,
                 tweet_id=tweet.id,
                 session=session,
@@ -57,7 +59,7 @@ class TestLikeModel:
 
     async def test_add_like_user_not_found(self, get_session_test, test_tweet):
         async with get_session_test as session:
-            response = await LikeRepository.add_like(
+            response = await add_like(
                 username="nonexistent_user", tweet_id=test_tweet.id, session=session
             )
 
@@ -69,7 +71,7 @@ class TestLikeModel:
         self, get_session_test, users_and_followers
     ):
         async with get_session_test as session:
-            response = await LikeRepository.add_like(
+            response = await add_like(
                 username=users_and_followers[0].username, tweet_id=999, session=session
             )
 
@@ -81,7 +83,7 @@ class TestLikeModel:
         self, get_session_test, users_and_followers, test_tweet, test_like
     ):
         async with get_session_test as session:
-            response = await LikeRepository.add_like(
+            response = await add_like(
                 username=users_and_followers[0].username,
                 tweet_id=test_tweet.id,
                 session=session,
@@ -93,7 +95,7 @@ class TestLikeModel:
         self, get_session_test, users_and_followers, test_tweet, test_like
     ):
         async with get_session_test as session:
-            response = await LikeRepository.remove_like(
+            response = await delete_like(
                 username=users_and_followers[0].username,
                 tweet_id=test_tweet.id,
                 session=session,
@@ -102,7 +104,7 @@ class TestLikeModel:
 
     async def test_remove_like_user_not_found(self, get_session_test, test_tweet):
         async with get_session_test as session:
-            response = await LikeRepository.remove_like(
+            response = await delete_like(
                 username="nonexistent_user", tweet_id=test_tweet.id, session=session
             )
 
@@ -114,7 +116,7 @@ class TestLikeModel:
         self, get_session_test, users_and_followers
     ):
         async with get_session_test as session:
-            response = await LikeRepository.remove_like(
+            response = await delete_like(
                 username=users_and_followers[0].username, tweet_id=999, session=session
             )
 
@@ -124,7 +126,7 @@ class TestLikeModel:
         self, get_session_test, users_and_followers, test_tweet
     ):
         async with get_session_test as session:
-            response = await LikeRepository.remove_like(
+            response = await delete_like(
                 username=users_and_followers[0].username,
                 tweet_id=test_tweet.id,
                 session=session,

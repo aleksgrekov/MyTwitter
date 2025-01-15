@@ -5,10 +5,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.models import Follow
-from src.database.repositories.user import get_user_id_by, is_user_exist
-from src.database.schemas.base import ErrorResponseSchema, SuccessSchema
+from src.database.repositories.user_repository import get_user_id_by, is_user_exist
 from src.functions import exception_handler
 from src.logger_setup import get_logger
+from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
 
 follow_rep_logger = get_logger(__name__)
 

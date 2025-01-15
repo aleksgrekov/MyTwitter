@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.database.schemas.const import USERS_NAME_LENGTH
+from src.schemas.const import USERS_NAME_LENGTH
 
 
 class LikeSchema(BaseModel):

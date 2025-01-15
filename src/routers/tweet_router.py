@@ -1,32 +1,34 @@
 from typing import Annotated, Union
 
 from fastapi import APIRouter, Depends, Header, status
+from fastapi.responses import JSONResponse
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.repositories.like import add_like, delete_like
-from src.database.repositories.tweet import (
+from src.database.repositories.like_repository import add_like, delete_like
+from src.database.repositories.tweet_repository import (
     add_tweet,
     delete_tweet,
     get_tweets_selection,
 )
-from src.database.schemas.base import ErrorResponseSchema, SuccessSchema
-from src.database.schemas.tweet import (
+from src.database.service import create_session
+from src.logger_setup import get_logger
+from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
+from src.schemas.tweet_schemas import (
     NewTweetResponseSchema,
     TweetBaseSchema,
     TweetResponseSchema,
 )
-from src.database.service import create_session
-from src.logger_setup import get_logger
 
 tweet_router_logger = get_logger(__name__)
 tweet_router = APIRouter(
-    prefix="/api/tweets",
+    prefix="/api",
     tags=["TWEET"],
 )
 
 
 @tweet_router.get(
-    "",
+    "/tweets",
     response_model=Union[TweetResponseSchema, ErrorResponseSchema],
     status_code=status.HTTP_200_OK,
     summary="Get the user's tweets",
@@ -48,7 +50,7 @@ async def get_tweets(
 
 
 @tweet_router.post(
-    "",
+    "/tweets",
     response_model=Union[NewTweetResponseSchema, ErrorResponseSchema],
     status_code=status.HTTP_201_CREATED,
     summary="Create a new tweet",
@@ -71,7 +73,7 @@ async def new_tweet(
 
 
 @tweet_router.delete(
-    "/{tweet_id}",
+    "/tweets/{tweet_id}",
     response_model=Union[SuccessSchema, ErrorResponseSchema],
     status_code=status.HTTP_200_OK,
     summary="Delete a tweet",
@@ -87,11 +89,15 @@ async def remove_tweet(
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
 ) -> Union[SuccessSchema, ErrorResponseSchema]:
-    return await delete_tweet(username=api_key, tweet_id=tweet_id, session=db)
+    status_code, result = await delete_tweet(username=api_key, tweet_id=tweet_id, session=db)
+    return JSONResponse(
+        status_code=status_code,
+        content=result.model_dump(),
+    )
 
 
 @tweet_router.post(
-    "/{tweet_id}/likes",
+    "/tweets/{tweet_id}/likes",
     response_model=Union[SuccessSchema, ErrorResponseSchema],
     status_code=status.HTTP_201_CREATED,
     summary="Like a tweet",
@@ -111,7 +117,7 @@ async def like(
 
 
 @tweet_router.delete(
-    "/{tweet_id}/likes",
+    "/tweets/{tweet_id}/likes",
     response_model=Union[SuccessSchema, ErrorResponseSchema],
     status_code=status.HTTP_200_OK,
     summary="Remove like from a tweet",
@@ -127,4 +133,5 @@ async def remove_like(
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
 ) -> Union[SuccessSchema, ErrorResponseSchema]:
-    return await delete_like(username=api_key, tweet_id=tweet_id, session=db)
+     return await delete_like(username=api_key, tweet_id=tweet_id, session=db)
+

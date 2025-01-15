@@ -3,12 +3,14 @@ from typing import Annotated, Union
 from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.repositories.follow import delete_follow, follow
-from src.database.repositories.user import get_user_with_followers_and_following
-from src.database.schemas.base import ErrorResponseSchema, SuccessSchema
-from src.database.schemas.user import UserResponseSchema
+from src.database.repositories.follow_repository import delete_follow, follow
+from src.database.repositories.user_repository import (
+    get_user_with_followers_and_following,
+)
 from src.database.service import create_session
 from src.logger_setup import get_logger
+from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
+from src.schemas.user_schemas import UserResponseSchema
 
 user_router_logger = get_logger(__name__)
 user_router = APIRouter(
