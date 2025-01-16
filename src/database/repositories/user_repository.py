@@ -1,4 +1,5 @@
-from typing import Optional, Sequence, Union
+from http import HTTPStatus
+from typing import Optional, Sequence, Tuple, Union
 
 from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,14 +54,8 @@ async def get_user_with_followers_and_following(
     session: AsyncSession,
     username: Optional[str] = None,
     user_id: Optional[int] = None,
-) -> Union[UserResponseSchema, ErrorResponseSchema]:
+) -> Tuple[Union[UserResponseSchema, ErrorResponseSchema], HTTPStatus]:
     """Get user with their followers and following list."""
-    if not username and not user_id:
-        return exception_handler(
-            user_rep_logger,
-            ValueError.__class__.__name__,
-            "Missing one of argument (username or user_id)",
-        )
 
     query = select(User)
     if username:
@@ -70,17 +65,21 @@ async def get_user_with_followers_and_following(
 
     user = (await session.scalars(query)).one_or_none()
     if not user:
-        return exception_handler(
-            user_rep_logger, ValueError.__class__.__name__, "User not found"
+        return (
+            await exception_handler(user_rep_logger, ValueError("User not found")),
+            HTTPStatus.NOT_FOUND,
         )
 
     followers = await get_user_followers(user.id, session)
     followings = await get_user_following(user.id, session)
 
-    return UserResponseSchema(
-        user=UserWithFollowSchema(
-            **UserSchema.model_validate(user).model_dump(),
-            followers=[UserSchema.model_validate(follow) for follow in followers],
-            following=[UserSchema.model_validate(follow) for follow in followings],
-        )
+    return (
+        UserResponseSchema(
+            user=UserWithFollowSchema(
+                **UserSchema.model_validate(user).model_dump(),
+                followers=[UserSchema.model_validate(follow) for follow in followers],
+                following=[UserSchema.model_validate(follow) for follow in followings],
+            )
+        ),
+        HTTPStatus.OK,
     )

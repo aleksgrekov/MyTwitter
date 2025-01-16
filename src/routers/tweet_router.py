@@ -2,7 +2,6 @@ from typing import Annotated, Union
 
 from fastapi import APIRouter, Depends, Header, status
 from fastapi.responses import JSONResponse
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.repositories.like_repository import add_like, delete_like
@@ -12,6 +11,7 @@ from src.database.repositories.tweet_repository import (
     get_tweets_selection,
 )
 from src.database.service import create_session
+from src.functions import json_response_serialized
 from src.logger_setup import get_logger
 from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
 from src.schemas.tweet_schemas import (
@@ -31,22 +31,22 @@ tweet_router = APIRouter(
     "/tweets",
     response_model=Union[TweetResponseSchema, ErrorResponseSchema],
     status_code=status.HTTP_200_OK,
-    summary="Get the user's tweets",
-    description="Returns a list of tweets created by the current user.",
+    summary="Get tweets from followed users",
+    description="Returns a list of tweets created by users the current user is following.",
     responses={
         200: {
             "description": "List of tweets fetched successfully",
             "model": TweetResponseSchema,
         },
-        404: {"description": "Tweets not found", "model": ErrorResponseSchema},
-        500: {"description": "Internal server error", "model": ErrorResponseSchema},
+        404: {"description": "User not found", "model": ErrorResponseSchema},
     },
 )
 async def get_tweets(
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
-) -> Union[TweetResponseSchema, ErrorResponseSchema]:
-    return await get_tweets_selection(username=api_key, session=db)
+) -> JSONResponse:
+    response, status_code = await get_tweets_selection(username=api_key, session=db)
+    return await json_response_serialized(response, status_code)
 
 
 @tweet_router.post(
@@ -54,22 +54,23 @@ async def get_tweets(
     response_model=Union[NewTweetResponseSchema, ErrorResponseSchema],
     status_code=status.HTTP_201_CREATED,
     summary="Create a new tweet",
-    description="Creates a new tweet on behalf of the current user.",
+    description="Creates a new tweet for the current user.",
     responses={
         201: {
             "description": "Tweet created successfully",
             "model": NewTweetResponseSchema,
         },
         400: {"description": "Bad request", "model": ErrorResponseSchema},
-        500: {"description": "Internal server error", "model": ErrorResponseSchema},
+        404: {"description": "User not found", "model": ErrorResponseSchema},
     },
 )
 async def new_tweet(
     api_key: Annotated[str, Header(description="User's API key")],
     tweet: TweetBaseSchema,
     db: AsyncSession = Depends(create_session),
-) -> Union[NewTweetResponseSchema, ErrorResponseSchema]:
-    return await add_tweet(username=api_key, tweet=tweet, session=db)
+) -> JSONResponse:
+    response, status_code = await add_tweet(username=api_key, tweet=tweet, session=db)
+    return await json_response_serialized(response, status_code)
 
 
 @tweet_router.delete(
@@ -80,20 +81,22 @@ async def new_tweet(
     description="Deletes a tweet by its ID if the current user is its author.",
     responses={
         200: {"description": "Tweet deleted successfully", "model": SuccessSchema},
-        404: {"description": "Tweet not found", "model": ErrorResponseSchema},
-        500: {"description": "Internal server error", "model": ErrorResponseSchema},
+        400: {
+            "description": "User can't delete this tweet",
+            "model": ErrorResponseSchema,
+        },
+        404: {"description": "User not found", "model": ErrorResponseSchema},
     },
 )
 async def remove_tweet(
     tweet_id: int,
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
-) -> Union[SuccessSchema, ErrorResponseSchema]:
-    status_code, result = await delete_tweet(username=api_key, tweet_id=tweet_id, session=db)
-    return JSONResponse(
-        status_code=status_code,
-        content=result.model_dump(),
+) -> JSONResponse:
+    response, status_code = await delete_tweet(
+        username=api_key, tweet_id=tweet_id, session=db
     )
+    return await json_response_serialized(response, status_code)
 
 
 @tweet_router.post(
@@ -101,37 +104,46 @@ async def remove_tweet(
     response_model=Union[SuccessSchema, ErrorResponseSchema],
     status_code=status.HTTP_201_CREATED,
     summary="Like a tweet",
-    description="Adds a like to the specified tweet on behalf of the current user.",
+    description="Adds a like to the specified tweet.",
     responses={
         201: {"description": "Like added successfully", "model": SuccessSchema},
-        404: {"description": "Tweet not found", "model": ErrorResponseSchema},
-        500: {"description": "Internal server error", "model": ErrorResponseSchema},
+        400: {"description": "Bad request", "model": ErrorResponseSchema},
+        404: {"description": "Tweet or User not found ", "model": ErrorResponseSchema},
+        409: {"description": "Like already exists", "model": ErrorResponseSchema},
     },
 )
 async def like(
     tweet_id: int,
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
-) -> Union[SuccessSchema, ErrorResponseSchema]:
-    return await add_like(username=api_key, tweet_id=tweet_id, session=db)
+) -> JSONResponse:
+    response, status_code = await add_like(
+        username=api_key, tweet_id=tweet_id, session=db
+    )
+    return await json_response_serialized(response, status_code)
 
 
 @tweet_router.delete(
     "/tweets/{tweet_id}/likes",
     response_model=Union[SuccessSchema, ErrorResponseSchema],
     status_code=status.HTTP_200_OK,
-    summary="Remove like from a tweet",
-    description="Removes a like from the specified tweet on behalf of the current user.",
+    summary="Remove a like from a tweet",
+    description="Removes a like from the specified tweet.",
     responses={
         200: {"description": "Like removed successfully", "model": SuccessSchema},
-        404: {"description": "Tweet not found", "model": ErrorResponseSchema},
-        500: {"description": "Internal server error", "model": ErrorResponseSchema},
+        400: {"description": "Bad request", "model": ErrorResponseSchema},
+        404: {
+            "description": "Tweet, Like or User not found",
+            "model": ErrorResponseSchema,
+        },
     },
 )
 async def remove_like(
     tweet_id: int,
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
-) -> Union[SuccessSchema, ErrorResponseSchema]:
-     return await delete_like(username=api_key, tweet_id=tweet_id, session=db)
-
+) -> JSONResponse:
+    response, status_code = await delete_like(
+        username=api_key, tweet_id=tweet_id, session=db
+    )
+    return await json_response_serialized(response, status_code)

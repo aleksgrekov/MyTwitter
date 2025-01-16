@@ -60,8 +60,10 @@ async def users_and_followers(get_session_test):
         user1 = User(username="test_user1", name="Test User1")
         user2 = User(username="test_user2", name="Test User2")
         user3 = User(username="test_user3", name="Test User3")
+        user4 = User(username="test_user4", name="Test User4")
 
-        session.add_all([user1, user2, user3])
+
+        session.add_all([user1, user2, user3, user4])
         await session.flush()
 
         follow1 = Follow(follower_id=user1.id, following_id=user2.id)
@@ -70,10 +72,10 @@ async def users_and_followers(get_session_test):
         session.add_all([follow1, follow2])
         await session.commit()
 
-        return user1, user2, user3
+        return user1, user2, user3, user4
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="session")
 async def test_tweet(get_session_test, users_and_followers):
     async with get_session_test as session:
         tweet = Tweet(

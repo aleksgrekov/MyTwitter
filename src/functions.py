@@ -3,31 +3,37 @@ from pathlib import Path
 
 import aiofiles
 from fastapi import UploadFile
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from werkzeug.utils import secure_filename
 
 from src.schemas.base_schemas import ErrorResponseSchema
 
 
-def exception_handler(logger: Logger, error_type: str, error_message: str):
+async def exception_handler(logger: Logger, exception: Exception):
     """
     Handles exceptions by logging them and returning a standardized error response.
 
     Args:
         logger (Logger): The logger instance to log the error.
-        error_type (str): A short description of the type of error.
-        error_message (str): Detailed information about the error.
+        exception (Exception): The type of error.
 
     Returns:
         ErrorResponseSchema: A schema representing the error details.
     """
-    logger.exception("error_type: %s, error_message: %s" % (error_type, error_message))
+
+    error_type = exception.__class__.__name__
+    error_message = str(exception)
+
+    logger.exception(f"{error_type=}, {error_message=}")
+    # logger.exception(f"error_type: %s, error_message: %s" % (error_type, error_message))
 
     return ErrorResponseSchema(
         result=False, error_type=error_type, error_message=error_message
     )
 
 
-def allowed_file(filename):
+async def allowed_file(filename):
     """
     Checks if a file has an allowed extension.
 
@@ -59,7 +65,7 @@ async def save_uploaded_file(api_key: str, upload_file: UploadFile) -> str:
     upload_folder = Path(__file__).parent.parent / "media" / secure_filename(api_key)
     upload_folder.mkdir(parents=True, exist_ok=True)
 
-    if not allowed_file(upload_file.filename):
+    if not await allowed_file(upload_file.filename):
         raise ValueError("File format is not allowed. Please upload a valid file.")
 
     filename = upload_file.filename if upload_file.filename else ""
@@ -69,10 +75,26 @@ async def save_uploaded_file(api_key: str, upload_file: UploadFile) -> str:
     if not str(output_file).startswith(str(upload_folder)):
         raise ValueError("Attempt to write outside the media directory.")
 
-    try:
-        async with aiofiles.open(output_file, "wb") as opened_file:
-            await opened_file.write(await upload_file.read())
-    except Exception as exc:
-        raise ValueError(f"Failed to save file: {str(exc)}")
+    async with aiofiles.open(output_file, "wb") as opened_file:
+        await opened_file.write(await upload_file.read())
 
     return str(output_file)
+
+
+async def json_response_serialized(
+    response: BaseModel, status_code: int
+) -> JSONResponse:
+    """
+    Return a JSON response with the given status code.
+
+    This function serializes the provided Pydantic model (`BaseModel`) into a JSON response
+    and returns it with the specified HTTP status code.
+
+    Args:
+        response (BaseModel): The Pydantic model to be serialized into JSON.
+        status_code (int): The HTTP status code to be returned with the response.
+
+    Returns:
+        JSONResponse: A JSON response containing the serialized data and status code.
+    """
+    return JSONResponse(response.model_dump(), status_code)

@@ -1,4 +1,5 @@
-from typing import Union
+from http import HTTPStatus
+from typing import Tuple, Union
 
 from sqlalchemy import delete, exists, select
 from sqlalchemy.exc import IntegrityError
@@ -24,26 +25,30 @@ async def is_like_exist(user_id: int, tweet_id: int, session: AsyncSession) -> b
 
 async def add_like(
     username: str, tweet_id: int, session: AsyncSession
-) -> Union[SuccessSchema, ErrorResponseSchema]:
+) -> Tuple[Union[SuccessSchema, ErrorResponseSchema], HTTPStatus]:
     """Add a like for a tweet."""
     user_id = await get_user_id_by(username, session)
 
     if not user_id:
-        return exception_handler(
-            like_rep_logger,
-            ValueError.__class__.__name__,
-            "User with this username does not exist",
+        return (
+            await exception_handler(
+                like_rep_logger,
+                ValueError("User with this username does not exist"),
+            ),
+            HTTPStatus.NOT_FOUND,
         )
-
     elif not await is_tweet_exist(tweet_id, session):
-        return exception_handler(
-            like_rep_logger,
-            ValueError.__class__.__name__,
-            "Tweet with this tweet_id does not exist",
+        return (
+            await exception_handler(
+                like_rep_logger,
+                ValueError("Tweet with this ID does not exist"),
+            ),
+            HTTPStatus.NOT_FOUND,
         )
     elif await is_like_exist(user_id, tweet_id, session):
-        return exception_handler(
-            like_rep_logger, ValueError.__class__.__name__, "Like already exists"
+        return (
+            await exception_handler(like_rep_logger, ValueError("Like already exists")),
+            HTTPStatus.CONFLICT,
         )
 
     session.add(Like(user_id=user_id, tweet_id=tweet_id))
@@ -52,29 +57,32 @@ async def add_like(
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
-        return exception_handler(like_rep_logger, exc.__class__.__name__, str(exc))
+        return await exception_handler(like_rep_logger, exc), HTTPStatus.BAD_REQUEST
 
-    return SuccessSchema()
+    return SuccessSchema(), HTTPStatus.CREATED
 
 
 async def delete_like(
     username: str, tweet_id: int, session: AsyncSession
-) -> Union[SuccessSchema, ErrorResponseSchema]:
+) -> Tuple[Union[SuccessSchema, ErrorResponseSchema], HTTPStatus]:
     """Remove a like from a tweet."""
     user_id = await get_user_id_by(username, session)
 
     if not user_id:
-        return exception_handler(
-            like_rep_logger,
-            ValueError.__class__.__name__,
-            "User with this username does not exist",
+        return (
+            await exception_handler(
+                like_rep_logger,
+                ValueError("User with this username does not exist"),
+            ),
+            HTTPStatus.NOT_FOUND,
         )
-
-    if not await is_tweet_exist(tweet_id, session):
-        return exception_handler(
-            like_rep_logger,
-            ValueError.__class__.__name__,
-            "Tweet with this ID does not exist",
+    elif not await is_tweet_exist(tweet_id, session):
+        return (
+            await exception_handler(
+                like_rep_logger,
+                ValueError("Tweet with this ID does not exist"),
+            ),
+            HTTPStatus.NOT_FOUND,
         )
 
     query = (
@@ -85,16 +93,18 @@ async def delete_like(
     request = await session.execute(query)
 
     if not request.fetchone():
-        return exception_handler(
-            like_rep_logger,
-            ValueError.__class__.__name__,
-            "No like entry found for this user and tweet",
+        return (
+            await exception_handler(
+                like_rep_logger,
+                ValueError("No like entry found for this user and tweet"),
+            ),
+            HTTPStatus.NOT_FOUND,
         )
 
     try:
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
-        return exception_handler(like_rep_logger, exc.__class__.__name__, str(exc))
+        return await exception_handler(like_rep_logger, exc), HTTPStatus.BAD_REQUEST
 
-    return SuccessSchema()
+    return SuccessSchema(), HTTPStatus.OK

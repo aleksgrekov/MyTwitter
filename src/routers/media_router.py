@@ -1,12 +1,18 @@
+from http import HTTPStatus
 from typing import Annotated, Union
 
 from fastapi import APIRouter, Depends, Header, UploadFile, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.repositories.media_repository import add_media
 from src.database.service import create_session
-from src.functions import exception_handler, save_uploaded_file
+from src.functions import (
+    exception_handler,
+    json_response_serialized,
+    save_uploaded_file,
+)
 from src.logger_setup import get_logger
 from src.schemas.base_schemas import ErrorResponseSchema
 from src.schemas.tweet_schemas import NewMediaResponseSchema
@@ -30,22 +36,23 @@ media_router = APIRouter(
             "model": NewMediaResponseSchema,
         },
         400: {"description": "Bad request", "model": ErrorResponseSchema},
-        500: {"description": "Internal server error", "model": ErrorResponseSchema},
     },
 )
 async def upload_media(
     api_key: Annotated[str, Header(description="User's API key")],
     file: UploadFile,
     db: AsyncSession = Depends(create_session),
-) -> Union[NewMediaResponseSchema, ErrorResponseSchema]:
+) -> JSONResponse:
     try:
         link = await save_uploaded_file(api_key, file)
-    except OSError as exc:
-        return exception_handler(routers_logger, exc.__class__.__name__, str(exc))
+    except (ValueError, OSError, PermissionError) as exc:
+        exception = await exception_handler(routers_logger, exc)
+        return await json_response_serialized(
+            response=exception,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
     finally:
         await file.close()
 
-    try:
-        return await add_media(link, session=db)
-    except SQLAlchemyError as exc:
-        return exception_handler(routers_logger, exc.__class__.__name__, str(exc))
+    response, status_code = await add_media(link, session=db)
+    return await json_response_serialized(response, status_code)

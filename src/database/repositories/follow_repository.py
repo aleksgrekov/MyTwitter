@@ -1,6 +1,7 @@
-from typing import Sequence, Union
+from http import HTTPStatus
+from typing import Tuple, Union
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,40 +14,19 @@ from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
 follow_rep_logger = get_logger(__name__)
 
 
-async def get_following_by(
-    username: str, session: AsyncSession
-) -> Union[Sequence[int], ErrorResponseSchema]:
-    """Get following by username"""
-    user_id = await get_user_id_by(username, session)
-
-    if not user_id:
-        return exception_handler(
-            follow_rep_logger,
-            ValueError.__class__.__name__,
-            "User with this username does not exist",
-        )
-
-    query = select(Follow.following_id).where(Follow.follower_id == user_id)
-    return (await session.scalars(query)).all()
-
-
 async def follow(
     username: str, following_id: int, session: AsyncSession
-) -> Union[SuccessSchema, ErrorResponseSchema]:
+) -> Tuple[Union[SuccessSchema, ErrorResponseSchema], HTTPStatus]:
     """Add a follow relationship."""
     follower_id = await get_user_id_by(username, session)
 
-    if not follower_id:
-        return exception_handler(
-            follow_rep_logger,
-            ValueError.__class__.__name__,
-            "User with this username does not exist",
-        )
-    elif not await is_user_exist(following_id, session):
-        return exception_handler(
-            follow_rep_logger,
-            ValueError.__class__.__name__,
-            "User with this ID does not exist",
+    if not follower_id or not await is_user_exist(following_id, session):
+        return (
+            await exception_handler(
+                follow_rep_logger,
+                ValueError("User does not exist"),
+            ),
+            HTTPStatus.NOT_FOUND,
         )
 
     session.add(Follow(follower_id=follower_id, following_id=following_id))
@@ -55,29 +35,24 @@ async def follow(
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
-        return exception_handler(follow_rep_logger, exc.__class__.__name__, str(exc))
+        return await exception_handler(follow_rep_logger, exc), HTTPStatus.BAD_REQUEST
 
-    return SuccessSchema()
+    return SuccessSchema(), HTTPStatus.CREATED
 
 
 async def delete_follow(
     username: str, following_id: int, session: AsyncSession
-) -> Union[SuccessSchema, ErrorResponseSchema]:
+) -> Tuple[Union[SuccessSchema, ErrorResponseSchema], HTTPStatus]:
     """Remove a follow relationship."""
     follower_id = await get_user_id_by(username, session)
 
-    if not follower_id:
-        return exception_handler(
-            follow_rep_logger,
-            ValueError.__class__.__name__,
-            "User with this username does not exist",
-        )
-
-    if not await is_user_exist(following_id, session):
-        return exception_handler(
-            follow_rep_logger,
-            ValueError.__class__.__name__,
-            "User with this ID does not exist",
+    if not follower_id or not await is_user_exist(following_id, session):
+        return (
+            await exception_handler(
+                follow_rep_logger,
+                ValueError("User does not exist"),
+            ),
+            HTTPStatus.NOT_FOUND,
         )
 
     query = (
@@ -88,16 +63,20 @@ async def delete_follow(
     request = await session.execute(query)
 
     if not request.fetchone():
-        return exception_handler(
-            follow_rep_logger,
-            ValueError.__class__.__name__,
-            "No follow entry found for this follower ID and following ID",
+        return (
+            await exception_handler(
+                follow_rep_logger,
+                ValueError(
+                    "No follow entry found for these follower ID and following ID"
+                ),
+            ),
+            HTTPStatus.NOT_FOUND,
         )
 
     try:
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
-        return exception_handler(follow_rep_logger, exc.__class__.__name__, str(exc))
+        return await exception_handler(follow_rep_logger, exc), HTTPStatus.BAD_REQUEST
 
-    return SuccessSchema()
+    return SuccessSchema(), HTTPStatus.OK

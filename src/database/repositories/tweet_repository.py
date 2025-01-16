@@ -1,4 +1,5 @@
-from typing import Union
+from http import HTTPStatus
+from typing import Tuple, Union
 
 from sqlalchemy import delete, exists, select
 from sqlalchemy.exc import IntegrityError
@@ -48,15 +49,17 @@ async def is_tweet_exist(tweet_id: int, session: AsyncSession) -> bool:
 
 async def get_tweets_selection(
     username: str, session: AsyncSession
-) -> Union[TweetResponseSchema, ErrorResponseSchema]:
+) -> Tuple[Union[TweetResponseSchema, ErrorResponseSchema], HTTPStatus]:
     """Get all tweets for a user."""
 
     user_id = await get_user_id_by(username, session)
     if not user_id:
-        return exception_handler(
-            tweet_rep_logger,
-            ValueError.__class__.__name__,
-            "User with this username does not exist",
+        return (
+            await exception_handler(
+                tweet_rep_logger,
+                ValueError("User with this username does not exist"),
+            ),
+            HTTPStatus.NOT_FOUND,
         )
 
     query = (
@@ -68,19 +71,21 @@ async def get_tweets_selection(
 
     tweet_schema = [await collect_tweet_data(tweet, session) for tweet in tweets]
 
-    return TweetResponseSchema(tweets=tweet_schema)
+    return TweetResponseSchema(tweets=tweet_schema), HTTPStatus.OK
 
 
 async def add_tweet(
     username: str, tweet: TweetBaseSchema, session: AsyncSession
-) -> Union[NewTweetResponseSchema, ErrorResponseSchema]:
+) -> Tuple[Union[NewTweetResponseSchema, ErrorResponseSchema], HTTPStatus]:
     """Add a new tweet."""
     user_id = await get_user_id_by(username, session)
     if not user_id:
-        return exception_handler(
-            tweet_rep_logger,
-            ValueError.__class__.__name__,
-            "User with this username does not exist",
+        return (
+            await exception_handler(
+                tweet_rep_logger,
+                ValueError("User with this username does not exist"),
+            ),
+            HTTPStatus.NOT_FOUND,
         )
 
     new_tweet = Tweet(author_id=user_id, **tweet.model_dump())
@@ -89,21 +94,22 @@ async def add_tweet(
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
-        return exception_handler(tweet_rep_logger, exc.__class__.__name__, str(exc))
-    return NewTweetResponseSchema(tweet_id=new_tweet.id)
+        return await exception_handler(tweet_rep_logger, exc), HTTPStatus.BAD_REQUEST
+    return NewTweetResponseSchema(tweet_id=new_tweet.id), HTTPStatus.CREATED
 
 
 async def delete_tweet(
     username: str, tweet_id: int, session: AsyncSession
-) -> Union[SuccessSchema, ErrorResponseSchema]:
+) -> Tuple[Union[SuccessSchema, ErrorResponseSchema], HTTPStatus]:
     """Delete a tweet."""
     user_id = await get_user_id_by(username, session)
     if not user_id:
-        status_code = 404
-        return status_code, exception_handler(
-            tweet_rep_logger,
-            ValueError.__class__.__name__,
-            "User with this username does not exist",
+        return (
+            await exception_handler(
+                tweet_rep_logger,
+                ValueError("User with this username does not exist"),
+            ),
+            HTTPStatus.NOT_FOUND,
         )
 
     query = (
@@ -113,19 +119,20 @@ async def delete_tweet(
     )
     request = await session.execute(query)
     if not request.fetchone():
-        status_code = 404
-        return status_code, exception_handler(
-            tweet_rep_logger,
-            ValueError.__class__.__name__,
-            "Tweet with this ID does not exist",
+        return (
+            await exception_handler(
+                tweet_rep_logger,
+                ValueError(
+                    f"User with {username=} can't delete tweet with {tweet_id=}"
+                ),
+            ),
+            HTTPStatus.BAD_REQUEST,
         )
 
     try:
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
-        status_code = 404
-        return status_code, exception_handler(tweet_rep_logger, exc.__class__.__name__, str(exc))
+        return await exception_handler(tweet_rep_logger, exc), HTTPStatus.BAD_REQUEST
 
-    status_code = 200
-    return status_code, SuccessSchema()
+    return SuccessSchema(), HTTPStatus.OK

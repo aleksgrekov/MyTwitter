@@ -1,6 +1,7 @@
 from typing import Annotated, Union
 
 from fastapi import APIRouter, Depends, Header, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.repositories.follow_repository import delete_follow, follow
@@ -8,6 +9,7 @@ from src.database.repositories.user_repository import (
     get_user_with_followers_and_following,
 )
 from src.database.service import create_session
+from src.functions import json_response_serialized
 from src.logger_setup import get_logger
 from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
 from src.schemas.user_schemas import UserResponseSchema
@@ -31,15 +33,17 @@ user_router = APIRouter(
             "description": "User profile fetched successfully",
             "model": UserResponseSchema,
         },
-        400: {"description": "Bad request", "model": ErrorResponseSchema},
-        500: {"description": "Internal server error", "model": ErrorResponseSchema},
+        404: {"description": "User not found", "model": ErrorResponseSchema},
     },
 )
 async def get_my_profile(
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
-) -> Union[UserResponseSchema, ErrorResponseSchema]:
-    return await get_user_with_followers_and_following(username=api_key, session=db)
+) -> JSONResponse:
+    response, status_code = await get_user_with_followers_and_following(
+        username=api_key, session=db
+    )
+    return await json_response_serialized(response, status_code)
 
 
 @user_router.get(
@@ -55,13 +59,15 @@ async def get_my_profile(
             "model": UserResponseSchema,
         },
         404: {"description": "User not found", "model": ErrorResponseSchema},
-        500: {"description": "Internal server error", "model": ErrorResponseSchema},
     },
 )
 async def get_user_profile(
     user_id: int, db: AsyncSession = Depends(create_session)
-) -> Union[UserResponseSchema, ErrorResponseSchema]:
-    return await get_user_with_followers_and_following(user_id=user_id, session=db)
+) -> JSONResponse:
+    response, status_code = await get_user_with_followers_and_following(
+        user_id=user_id, session=db
+    )
+    return await json_response_serialized(response, status_code)
 
 
 @user_router.post(
@@ -73,16 +79,19 @@ async def get_user_profile(
     "between the current user and another user.",
     responses={
         201: {"description": "Successfully followed user", "model": SuccessSchema},
+        400: {"description": "Bad request", "model": ErrorResponseSchema},
         404: {"description": "User not found", "model": ErrorResponseSchema},
-        500: {"description": "Internal server error", "model": ErrorResponseSchema},
     },
 )
 async def add_follow(
     user_id: int,
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
-) -> Union[SuccessSchema, ErrorResponseSchema]:
-    return await follow(username=api_key, following_id=user_id, session=db)
+) -> JSONResponse:
+    response, status_code = await follow(
+        username=api_key, following_id=user_id, session=db
+    )
+    return await json_response_serialized(response, status_code)
 
 
 @user_router.delete(
@@ -94,13 +103,16 @@ async def add_follow(
     "between the current user and another user.",
     responses={
         200: {"description": "Successfully unfollowed user", "model": SuccessSchema},
-        404: {"description": "User not found", "model": ErrorResponseSchema},
-        500: {"description": "Internal server error", "model": ErrorResponseSchema},
+        400: {"description": "Bad request", "model": ErrorResponseSchema},
+        404: {"description": "User or Follow not found", "model": ErrorResponseSchema},
     },
 )
 async def unfollow_user(
     user_id: int,
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
-) -> Union[SuccessSchema, ErrorResponseSchema]:
-    return await delete_follow(username=api_key, following_id=user_id, session=db)
+) -> JSONResponse:
+    response, status_code = await delete_follow(
+        username=api_key, following_id=user_id, session=db
+    )
+    return await json_response_serialized(response, status_code)

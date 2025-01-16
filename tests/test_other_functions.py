@@ -6,12 +6,12 @@ from src.functions import allowed_file, exception_handler
 from src.schemas.base_schemas import ErrorResponseSchema
 
 
-def test_exception_handler(mocker):
+async def test_exception_handler(mocker):
     logger = mocker.MagicMock(spec=Logger)
     error_type = "ValidationError"
     error_message = "Invalid input data."
 
-    result = exception_handler(logger, error_type, error_message)
+    result = await exception_handler(logger, error_type, error_message)
 
     logger.exception.assert_called_once_with(
         "error_type: ValidationError, error_message: Invalid input data."
@@ -32,5 +32,5 @@ def test_exception_handler(mocker):
         (".hiddenfile", False),
     ],
 )
-def test_allowed_file(filename, expected):
-    assert allowed_file(filename) == expected
+async def test_allowed_file(filename, expected):
+    assert await allowed_file(filename) == expected
