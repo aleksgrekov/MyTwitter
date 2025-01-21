@@ -1,1 +1,0 @@
-print(ValueError.__name__)

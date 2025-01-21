@@ -1,20 +1,15 @@
-from http import HTTPStatus
-from typing import Optional, Sequence, Tuple, Union
+from typing import Optional, Sequence
 
 from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.models import Follow, User
-from src.functions import exception_handler
-from src.logger_setup import get_logger
-from src.schemas.base_schemas import ErrorResponseSchema
+from src.handlers.exceptions import RowNotFoundException
 from src.schemas.user_schemas import (
     UserResponseSchema,
     UserSchema,
     UserWithFollowSchema,
 )
-
-user_rep_logger = get_logger(__name__)
 
 
 async def is_user_exist(user_id: int, session: AsyncSession) -> bool:
@@ -54,7 +49,7 @@ async def get_user_with_followers_and_following(
     session: AsyncSession,
     username: Optional[str] = None,
     user_id: Optional[int] = None,
-) -> Tuple[Union[UserResponseSchema, ErrorResponseSchema], HTTPStatus]:
+) -> UserResponseSchema:
     """Get user with their followers and following list."""
 
     query = select(User)
@@ -62,24 +57,20 @@ async def get_user_with_followers_and_following(
         query = query.where(User.username == username)
     elif user_id:
         query = query.where(User.id == user_id)
+    else:
+        raise RowNotFoundException()
 
     user = (await session.scalars(query)).one_or_none()
     if not user:
-        return (
-            await exception_handler(user_rep_logger, ValueError("User not found")),
-            HTTPStatus.NOT_FOUND,
-        )
+        raise RowNotFoundException()
 
     followers = await get_user_followers(user.id, session)
     followings = await get_user_following(user.id, session)
 
-    return (
-        UserResponseSchema(
-            user=UserWithFollowSchema(
-                **UserSchema.model_validate(user).model_dump(),
-                followers=[UserSchema.model_validate(follow) for follow in followers],
-                following=[UserSchema.model_validate(follow) for follow in followings],
-            )
-        ),
-        HTTPStatus.OK,
+    return UserResponseSchema(
+        user=UserWithFollowSchema(
+            **UserSchema.model_validate(user).model_dump(),
+            followers=[UserSchema.model_validate(follow) for follow in followers],
+            following=[UserSchema.model_validate(follow) for follow in followings],
+        )
     )

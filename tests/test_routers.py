@@ -15,7 +15,7 @@ class TestApi:
     @pytest.fixture(scope="class")
     async def ac(self) -> AsyncGenerator[AsyncClient, None]:
         async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
+            transport=ASGITransport(app=app), base_url="http://test"
         ) as ac:
             yield ac
 
@@ -46,8 +46,16 @@ class TestApi:
             ("wrong_api_key", 404, False, "User not found"),
         ],
     )
-    async def test_get_my_profile(self, ac, api_key, wrong_api_key, headers, expected_status, expected_result,
-                                  expected_error):
+    async def test_get_my_profile(
+        self,
+        ac,
+        api_key,
+        wrong_api_key,
+        headers,
+        expected_status,
+        expected_result,
+        expected_error,
+    ):
         """Тесты для получения профиля текущего пользователя, включая все возможные ответы."""
         headers = api_key if headers == "api_key" else wrong_api_key
 
@@ -74,8 +82,9 @@ class TestApi:
             (1000, 404, False, "User not found"),
         ],
     )
-    async def test_get_user_profile(self, ac, user_id, expected_status, expected_result,
-                                    expected_error):
+    async def test_get_user_profile(
+        self, ac, user_id, expected_status, expected_result, expected_error
+    ):
         """Тесты для получения профиля текущего пользователя, включая все возможные ответы."""
 
         response = await ac.get(f"/api/users/{user_id}")
@@ -101,7 +110,9 @@ class TestApi:
             ("wrong_api_key", 404, False),
         ],
     )
-    async def test_get_tweets(self, ac, api_key, wrong_api_key, headers, expected_status, expected_result):
+    async def test_get_tweets(
+        self, ac, api_key, wrong_api_key, headers, expected_status, expected_result
+    ):
         """Тест получения твитов."""
 
         headers = api_key if headers == "api_key" else wrong_api_key
@@ -116,13 +127,33 @@ class TestApi:
     @pytest.mark.parametrize(
         "headers, tweet_data, expected_status, expected_result, expected_error_message",
         [
-            ("api_key", {"tweet_data": "This is a valid tweet", "tweet_media_ids": []}, 201, True, None),
-            ("wrong_api_key", {"tweet_data": "This is a valid tweet", "tweet_media_ids": []}, 404, False,
-             "User with this username does not exist"),
+            (
+                "api_key",
+                {"tweet_data": "This is a valid tweet", "tweet_media_ids": []},
+                201,
+                True,
+                None,
+            ),
+            (
+                "wrong_api_key",
+                {"tweet_data": "This is a valid tweet", "tweet_media_ids": []},
+                404,
+                False,
+                "User not found",
+            ),
         ],
     )
-    async def test_create_tweet(self, ac, api_key, wrong_api_key, headers, tweet_data, expected_status, expected_result,
-                                expected_error_message):
+    async def test_create_tweet(
+        self,
+        ac,
+        api_key,
+        wrong_api_key,
+        headers,
+        tweet_data,
+        expected_status,
+        expected_result,
+        expected_error_message,
+    ):
         """Тест для создания твита с проверкой всех возможных ответов."""
 
         headers = api_key if headers == "api_key" else wrong_api_key
@@ -144,11 +175,19 @@ class TestApi:
         [
             ("valid_tweet", "api_key", 200, True),
             ("valid_tweet", "wrong_api_key", 404, False),
-            (999, "api_key", 400, False),
+            (999, "api_key", 403, False),
         ],
     )
     async def test_delete_tweet(
-            self, ac, api_key, wrong_api_key, add_tweet, tweet_id, headers, expected_status, expected_result
+        self,
+        ac,
+        api_key,
+        wrong_api_key,
+        add_tweet,
+        tweet_id,
+        headers,
+        expected_status,
+        expected_result,
     ):
         """Тест удаления твита."""
 
@@ -173,8 +212,16 @@ class TestApi:
         ],
     )
     async def test_like_tweet(
-            self, ac, api_key, wrong_api_key, add_tweet, tweet_id, headers, expected_status, expected_result,
-            duplicate_like
+        self,
+        ac,
+        api_key,
+        wrong_api_key,
+        add_tweet,
+        tweet_id,
+        headers,
+        expected_status,
+        expected_result,
+        duplicate_like,
     ):
         """Тест добавления лайка к твиту, включая проверку повторного лайка."""
 
@@ -198,11 +245,20 @@ class TestApi:
             (True, "valid_tweet", "api_key", 200, True),
             (False, "valid_tweet", "api_key", 404, False),
             (True, "valid_tweet", "wrong_api_key", 404, False),
-            (False, 999, "api_key", 404, False)
+            (False, 999, "api_key", 404, False),
         ],
     )
     async def test_unlike_tweet(
-            self, ac, api_key, wrong_api_key, add_tweet, setup_like, tweet_id, headers, expected_status, expected_result
+        self,
+        ac,
+        api_key,
+        wrong_api_key,
+        add_tweet,
+        setup_like,
+        tweet_id,
+        headers,
+        expected_status,
+        expected_result,
     ):
         """Тесты для удаления лайков с твита, покрывающие все возможные сценарии."""
 
@@ -214,7 +270,9 @@ class TestApi:
         if setup_like:
             await ac.post(f"/api/tweets/{tweet_id}/likes", headers=api_key)
 
-        unlike_response = await ac.delete(f"/api/tweets/{tweet_id}/likes", headers=headers)
+        unlike_response = await ac.delete(
+            f"/api/tweets/{tweet_id}/likes", headers=headers
+        )
 
         assert unlike_response.status_code == expected_status
         unlike_data = unlike_response.json()
@@ -224,12 +282,21 @@ class TestApi:
         "headers, user_id, expected_status, expected_result, expected_error_message",
         [
             ("api_key", 1, 201, True, None),  # Успешное добавление подписки
-            ("api_key", 9999, 404, False, "User with this ID does not exist"),
-            ("wrong_api_key", 1, 404, False, "User with this username does not exist"),
+            ("api_key", 9999, 404, False, "User not found"),
+            ("wrong_api_key", 1, 404, False, "User not found"),
         ],
     )
-    async def test_add_follow(self, ac, api_key, wrong_api_key, headers, user_id, expected_status, expected_result,
-                              expected_error_message):
+    async def test_add_follow(
+        self,
+        ac,
+        api_key,
+        wrong_api_key,
+        headers,
+        user_id,
+        expected_status,
+        expected_result,
+        expected_error_message,
+    ):
         """Тест для добавления подписки с проверкой всех возможных ответов."""
 
         headers = api_key if headers == "api_key" else wrong_api_key
@@ -245,23 +312,34 @@ class TestApi:
             assert data["error_message"] == expected_error_message
 
     @pytest.mark.parametrize(
-        "setup_follow, headers, user_id, expected_status, expected_result, expected_error_message",
+        "headers, user_id, expected_status, expected_result, expected_error_message",
         [
-            (True, "api_key", 1, 200, True, None),  # Успешное удаление подписки
-            (False, "api_key", 9999, 404, False, "User or Follow not found"),
-            (False, "wrong_api_key", 1, 404, False, "User or Follow not found"),  # Ошибка: неверный API ключ
-            (False, "api_key", 2, 400, False, "Bad request"),  # Ошибка: неверный запрос (например, уже отписан)
+            ("api_key", 2, 200, True, None),
+            ("api_key", 9999, 404, False, "User not found"),
+            ("wrong_api_key", 1, 404, False, "User not found"),
+            (
+                "api_key",
+                11,
+                404,
+                False,
+                "No follow entry found for these follower ID and following ID",
+            ),
         ],
     )
-    async def test_unfollow_user(self, ac, api_key, wrong_api_key, setup_follow, headers, user_id, expected_status,
-                                 expected_result,
-                                 expected_error_message):
+    async def test_unfollow_user(
+        self,
+        ac,
+        api_key,
+        wrong_api_key,
+        headers,
+        user_id,
+        expected_status,
+        expected_result,
+        expected_error_message,
+    ):
         """Тест для удаления подписки с проверкой всех возможных ответов."""
 
         headers = api_key if headers == "api_key" else wrong_api_key
-
-        if setup_follow:
-            await ac.post(f"/api/users/{user_id}/follow", headers=headers)
 
         response = await ac.delete(f"/api/users/{user_id}/follow", headers=headers)
 
@@ -290,21 +368,6 @@ class TestApi:
 
         assert response.status_code == 200
 
-    async def test_homepage_os_error(self, ac, mocker):
-        """Тест для обработки ошибки рендеринга"""
-
-        mocker.patch(
-            "fastapi.templating.Jinja2Templates.TemplateResponse",
-            side_effect=OSError("Mock exception"),
-        )
-
-        response = await ac.get("/")
-        assert response.status_code == 422
-        error_data = response.json()
-        assert error_data["result"] is False
-        assert error_data["error_type"] == "OSError"
-        assert error_data["error_message"] == "Mock exception"
-
     async def test_homepage_template_error(self, ac, mocker):
         """Тест для обработки ошибки рендеринга"""
 
@@ -317,5 +380,5 @@ class TestApi:
         assert response.status_code == 404
         error_data = response.json()
         assert error_data["result"] is False
-        assert error_data["error_type"] == "TemplateNotFound"
-        assert error_data["error_message"] == "Mock exception"
+        assert error_data["error_type"] == "RowNotFoundException"
+        assert error_data["error_message"] == "Template not found"

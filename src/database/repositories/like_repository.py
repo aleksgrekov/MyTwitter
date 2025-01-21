@@ -1,6 +1,3 @@
-from http import HTTPStatus
-from typing import Tuple, Union
-
 from sqlalchemy import delete, exists, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,11 +5,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.database.models import Like
 from src.database.repositories.tweet_repository import is_tweet_exist
 from src.database.repositories.user_repository import get_user_id_by
-from src.functions import exception_handler
-from src.logger_setup import get_logger
-from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
+from src.handlers.exceptions import (
+    IntegrityViolationException,
+    RowAlreadyExists,
+    RowNotFoundException,
+)
+from src.schemas.base_schemas import SuccessSchema
 
-like_rep_logger = get_logger(__name__)
+
+async def validate_user_and_tweet(
+    username: str, tweet_id: int, session: AsyncSession
+) -> int:
+    """Validate that user and tweet exist. Return user ID."""
+    user_id = await get_user_id_by(username, session)
+    if not user_id:
+        raise RowNotFoundException()
+    elif not await is_tweet_exist(tweet_id, session):
+        raise RowNotFoundException("Tweet with this ID does not exist")
+
+    return user_id
 
 
 async def is_like_exist(user_id: int, tweet_id: int, session: AsyncSession) -> bool:
@@ -25,31 +36,12 @@ async def is_like_exist(user_id: int, tweet_id: int, session: AsyncSession) -> b
 
 async def add_like(
     username: str, tweet_id: int, session: AsyncSession
-) -> Tuple[Union[SuccessSchema, ErrorResponseSchema], HTTPStatus]:
+) -> SuccessSchema:
     """Add a like for a tweet."""
-    user_id = await get_user_id_by(username, session)
+    user_id = await validate_user_and_tweet(username, tweet_id, session)
 
-    if not user_id:
-        return (
-            await exception_handler(
-                like_rep_logger,
-                ValueError("User with this username does not exist"),
-            ),
-            HTTPStatus.NOT_FOUND,
-        )
-    elif not await is_tweet_exist(tweet_id, session):
-        return (
-            await exception_handler(
-                like_rep_logger,
-                ValueError("Tweet with this ID does not exist"),
-            ),
-            HTTPStatus.NOT_FOUND,
-        )
-    elif await is_like_exist(user_id, tweet_id, session):
-        return (
-            await exception_handler(like_rep_logger, ValueError("Like already exists")),
-            HTTPStatus.CONFLICT,
-        )
+    if await is_like_exist(user_id, tweet_id, session):
+        raise RowAlreadyExists()
 
     session.add(Like(user_id=user_id, tweet_id=tweet_id))
 
@@ -57,33 +49,16 @@ async def add_like(
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
-        return await exception_handler(like_rep_logger, exc), HTTPStatus.BAD_REQUEST
+        raise IntegrityViolationException(str(exc))
 
-    return SuccessSchema(), HTTPStatus.CREATED
+    return SuccessSchema()
 
 
 async def delete_like(
     username: str, tweet_id: int, session: AsyncSession
-) -> Tuple[Union[SuccessSchema, ErrorResponseSchema], HTTPStatus]:
+) -> SuccessSchema:
     """Remove a like from a tweet."""
-    user_id = await get_user_id_by(username, session)
-
-    if not user_id:
-        return (
-            await exception_handler(
-                like_rep_logger,
-                ValueError("User with this username does not exist"),
-            ),
-            HTTPStatus.NOT_FOUND,
-        )
-    elif not await is_tweet_exist(tweet_id, session):
-        return (
-            await exception_handler(
-                like_rep_logger,
-                ValueError("Tweet with this ID does not exist"),
-            ),
-            HTTPStatus.NOT_FOUND,
-        )
+    user_id = await validate_user_and_tweet(username, tweet_id, session)
 
     query = (
         delete(Like)
@@ -93,18 +68,12 @@ async def delete_like(
     request = await session.execute(query)
 
     if not request.fetchone():
-        return (
-            await exception_handler(
-                like_rep_logger,
-                ValueError("No like entry found for this user and tweet"),
-            ),
-            HTTPStatus.NOT_FOUND,
-        )
+        raise RowNotFoundException("No like entry found for this user and tweet")
 
     try:
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
-        return await exception_handler(like_rep_logger, exc), HTTPStatus.BAD_REQUEST
+        raise IntegrityViolationException(str(exc))
 
-    return SuccessSchema(), HTTPStatus.OK
+    return SuccessSchema()

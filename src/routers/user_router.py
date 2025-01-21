@@ -9,12 +9,10 @@ from src.database.repositories.user_repository import (
     get_user_with_followers_and_following,
 )
 from src.database.service import create_session
-from src.functions import json_response_serialized
-from src.logger_setup import get_logger
+from src.handlers.handlers import secure_request
 from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
 from src.schemas.user_schemas import UserResponseSchema
 
-user_router_logger = get_logger(__name__)
 user_router = APIRouter(
     prefix="/api/users",
     tags=["USER"],
@@ -40,10 +38,8 @@ async def get_my_profile(
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
 ) -> JSONResponse:
-    response, status_code = await get_user_with_followers_and_following(
-        username=api_key, session=db
-    )
-    return await json_response_serialized(response, status_code)
+    coroutine = get_user_with_followers_and_following(username=api_key, session=db)
+    return await secure_request(coroutine)
 
 
 @user_router.get(
@@ -64,10 +60,8 @@ async def get_my_profile(
 async def get_user_profile(
     user_id: int, db: AsyncSession = Depends(create_session)
 ) -> JSONResponse:
-    response, status_code = await get_user_with_followers_and_following(
-        user_id=user_id, session=db
-    )
-    return await json_response_serialized(response, status_code)
+    coroutine = get_user_with_followers_and_following(user_id=user_id, session=db)
+    return await secure_request(coroutine)
 
 
 @user_router.post(
@@ -88,10 +82,8 @@ async def add_follow(
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
 ) -> JSONResponse:
-    response, status_code = await follow(
-        username=api_key, following_id=user_id, session=db
-    )
-    return await json_response_serialized(response, status_code)
+    coroutine = follow(username=api_key, following_id=user_id, session=db)
+    return await secure_request(coroutine)
 
 
 @user_router.delete(
@@ -112,7 +104,5 @@ async def unfollow_user(
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
 ) -> JSONResponse:
-    response, status_code = await delete_follow(
-        username=api_key, following_id=user_id, session=db
-    )
-    return await json_response_serialized(response, status_code)
+    coroutine = delete_follow(username=api_key, following_id=user_id, session=db)
+    return await secure_request(coroutine)

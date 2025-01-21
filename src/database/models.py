@@ -1,10 +1,10 @@
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import ARRAY, ForeignKey, Integer, String
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-DELETE_CASCADE = "all, delete-orphan"
+DELETE_CASCADE = "all, delete"
 USER_ID_FK = "users.id"
 
 
@@ -69,8 +69,8 @@ class Tweet(Base):
     max_tweet_length = 280
 
     id: Mapped[int] = mapped_column(primary_key=True, doc="Primary key of the tweet")
-    author_id: Mapped[int] = mapped_column(
-        ForeignKey(USER_ID_FK), doc="ID of the tweet's author"
+    author_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey(USER_ID_FK, ondelete="set null"), doc="ID of the tweet's author"
     )
     tweet_data: Mapped[str] = mapped_column(
         String(max_tweet_length), doc="Content of the tweet, max 280 characters"
@@ -123,11 +123,13 @@ class Like(Base):
     id: Mapped[int] = mapped_column(
         primary_key=True, doc="The unique identifier of the like."
     )
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey(USER_ID_FK), doc="The ID of the user who liked the tweet."
+    user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey(USER_ID_FK, ondelete="set null"),
+        doc="The ID of the user who liked the tweet.",
     )
     tweet_id: Mapped[int] = mapped_column(
-        ForeignKey("tweets.id"), doc="The ID of the tweet that was liked."
+        ForeignKey("tweets.id", ondelete="cascade"),
+        doc="The ID of the tweet that was liked.",
     )
 
     author: Mapped["User"] = relationship(
@@ -156,12 +158,12 @@ class Follow(Base):
     __tablename__ = "follows"
 
     follower_id: Mapped[int] = mapped_column(
-        ForeignKey(USER_ID_FK),
+        ForeignKey(USER_ID_FK, ondelete="cascade"),
         primary_key=True,
         doc="The ID of the user who follows another user.",
     )
     following_id: Mapped[int] = mapped_column(
-        ForeignKey(USER_ID_FK),
+        ForeignKey(USER_ID_FK, ondelete="cascade"),
         primary_key=True,
         doc="The ID of the user who is being followed.",
     )

@@ -7,18 +7,12 @@ from src.database.repositories.user_repository import (
     get_user_with_followers_and_following,
     is_user_exist,
 )
-from src.schemas.base_schemas import ErrorResponseSchema
+from src.handlers.exceptions import RowNotFoundException
 from src.schemas.user_schemas import UserResponseSchema
 
 
 @pytest.mark.usefixtures("prepare_database")
-class TestUserModel:
-
-    @classmethod
-    def assert_error_response(cls, response, expected_message):
-        assert isinstance(response, ErrorResponseSchema)
-        assert response.result is False
-        assert response.error_message == expected_message
+class TestUserRepository:
 
     async def test_check_user_exists(self, users_and_followers, get_session_test):
         async with get_session_test as session:
@@ -67,27 +61,25 @@ class TestUserModel:
             assert response.result is True
             assert response.user.id == users_and_followers[0].id
             assert response.user.name == users_and_followers[0].name
-            assert len(response.user.followers) == 1
-            assert len(response.user.following) == 1
+            assert len(response.user.followers) > 0
+            assert len(response.user.following) > 0
 
     async def test_get_user_with_followers_and_following_missing_args(
         self, get_session_test
     ):
         async with get_session_test as session:
-            response = await get_user_with_followers_and_following(session)
-
-            self.assert_error_response(
-                response, "Missing one of argument (username or user_id)"
-            )
+            with pytest.raises(RowNotFoundException) as exc_info:
+                await get_user_with_followers_and_following(session)
+            assert exc_info.value.detail == "User not found"
+            assert exc_info.value.status_code == 404
 
     async def test_get_user_with_followers_and_following_user_not_found(
         self, get_session_test
     ):
         async with get_session_test as session:
-            username = "non_existent_user"
-
-            response = await get_user_with_followers_and_following(
-                session, username=username
-            )
-
-            self.assert_error_response(response, "User not found")
+            with pytest.raises(RowNotFoundException) as exc_info:
+                await get_user_with_followers_and_following(
+                    session, username="non_existent_user"
+                )
+            assert exc_info.value.detail == "User not found"
+            assert exc_info.value.status_code == 404

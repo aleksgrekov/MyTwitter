@@ -11,8 +11,7 @@ from src.database.repositories.tweet_repository import (
     get_tweets_selection,
 )
 from src.database.service import create_session
-from src.functions import json_response_serialized
-from src.logger_setup import get_logger
+from src.handlers.handlers import secure_request
 from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
 from src.schemas.tweet_schemas import (
     NewTweetResponseSchema,
@@ -20,7 +19,6 @@ from src.schemas.tweet_schemas import (
     TweetResponseSchema,
 )
 
-tweet_router_logger = get_logger(__name__)
 tweet_router = APIRouter(
     prefix="/api",
     tags=["TWEET"],
@@ -45,8 +43,8 @@ async def get_tweets(
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
 ) -> JSONResponse:
-    response, status_code = await get_tweets_selection(username=api_key, session=db)
-    return await json_response_serialized(response, status_code)
+    coroutine = get_tweets_selection(username=api_key, session=db)
+    return await secure_request(coroutine)
 
 
 @tweet_router.post(
@@ -69,8 +67,8 @@ async def new_tweet(
     tweet: TweetBaseSchema,
     db: AsyncSession = Depends(create_session),
 ) -> JSONResponse:
-    response, status_code = await add_tweet(username=api_key, tweet=tweet, session=db)
-    return await json_response_serialized(response, status_code)
+    coroutine = add_tweet(username=api_key, tweet=tweet, session=db)
+    return await secure_request(coroutine)
 
 
 @tweet_router.delete(
@@ -93,10 +91,8 @@ async def remove_tweet(
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
 ) -> JSONResponse:
-    response, status_code = await delete_tweet(
-        username=api_key, tweet_id=tweet_id, session=db
-    )
-    return await json_response_serialized(response, status_code)
+    coroutine = delete_tweet(username=api_key, tweet_id=tweet_id, session=db)
+    return await secure_request(coroutine)
 
 
 @tweet_router.post(
@@ -117,10 +113,8 @@ async def like(
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
 ) -> JSONResponse:
-    response, status_code = await add_like(
-        username=api_key, tweet_id=tweet_id, session=db
-    )
-    return await json_response_serialized(response, status_code)
+    coroutine = add_like(username=api_key, tweet_id=tweet_id, session=db)
+    return await secure_request(coroutine)
 
 
 @tweet_router.delete(
@@ -143,7 +137,5 @@ async def remove_like(
     api_key: Annotated[str, Header(description="User's API key")],
     db: AsyncSession = Depends(create_session),
 ) -> JSONResponse:
-    response, status_code = await delete_like(
-        username=api_key, tweet_id=tweet_id, session=db
-    )
-    return await json_response_serialized(response, status_code)
+    coroutine = delete_like(username=api_key, tweet_id=tweet_id, session=db)
+    return await secure_request(coroutine)

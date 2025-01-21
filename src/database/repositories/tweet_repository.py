@@ -1,6 +1,3 @@
-from http import HTTPStatus
-from typing import Tuple, Union
-
 from sqlalchemy import delete, exists, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,9 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.database.models import Follow, Tweet
 from src.database.repositories.media_repository import get_media_link_by
 from src.database.repositories.user_repository import get_user_id_by
-from src.functions import exception_handler
-from src.logger_setup import get_logger
-from src.schemas.base_schemas import ErrorResponseSchema, SuccessSchema
+from src.handlers.exceptions import (
+    IntegrityViolationException,
+    PermissionException,
+    RowNotFoundException,
+)
+from src.schemas.base_schemas import SuccessSchema
 from src.schemas.like_schemas import LikeSchema
 from src.schemas.tweet_schemas import (
     NewTweetResponseSchema,
@@ -19,8 +19,6 @@ from src.schemas.tweet_schemas import (
     TweetSchema,
 )
 from src.schemas.user_schemas import UserSchema
-
-tweet_rep_logger = get_logger(__name__)
 
 
 async def collect_tweet_data(tweet: "Tweet", session: AsyncSession) -> TweetSchema:
@@ -49,18 +47,12 @@ async def is_tweet_exist(tweet_id: int, session: AsyncSession) -> bool:
 
 async def get_tweets_selection(
     username: str, session: AsyncSession
-) -> Tuple[Union[TweetResponseSchema, ErrorResponseSchema], HTTPStatus]:
+) -> TweetResponseSchema:
     """Get all tweets for a user."""
 
     user_id = await get_user_id_by(username, session)
     if not user_id:
-        return (
-            await exception_handler(
-                tweet_rep_logger,
-                ValueError("User with this username does not exist"),
-            ),
-            HTTPStatus.NOT_FOUND,
-        )
+        raise RowNotFoundException()
 
     query = (
         select(Tweet)
@@ -71,22 +63,16 @@ async def get_tweets_selection(
 
     tweet_schema = [await collect_tweet_data(tweet, session) for tweet in tweets]
 
-    return TweetResponseSchema(tweets=tweet_schema), HTTPStatus.OK
+    return TweetResponseSchema(tweets=tweet_schema)
 
 
 async def add_tweet(
     username: str, tweet: TweetBaseSchema, session: AsyncSession
-) -> Tuple[Union[NewTweetResponseSchema, ErrorResponseSchema], HTTPStatus]:
+) -> NewTweetResponseSchema:
     """Add a new tweet."""
     user_id = await get_user_id_by(username, session)
     if not user_id:
-        return (
-            await exception_handler(
-                tweet_rep_logger,
-                ValueError("User with this username does not exist"),
-            ),
-            HTTPStatus.NOT_FOUND,
-        )
+        raise RowNotFoundException()
 
     new_tweet = Tweet(author_id=user_id, **tweet.model_dump())
     session.add(new_tweet)
@@ -94,23 +80,17 @@ async def add_tweet(
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
-        return await exception_handler(tweet_rep_logger, exc), HTTPStatus.BAD_REQUEST
-    return NewTweetResponseSchema(tweet_id=new_tweet.id), HTTPStatus.CREATED
+        raise IntegrityViolationException(str(exc))
+    return NewTweetResponseSchema(tweet_id=new_tweet.id)
 
 
 async def delete_tweet(
     username: str, tweet_id: int, session: AsyncSession
-) -> Tuple[Union[SuccessSchema, ErrorResponseSchema], HTTPStatus]:
+) -> SuccessSchema:
     """Delete a tweet."""
     user_id = await get_user_id_by(username, session)
     if not user_id:
-        return (
-            await exception_handler(
-                tweet_rep_logger,
-                ValueError("User with this username does not exist"),
-            ),
-            HTTPStatus.NOT_FOUND,
-        )
+        raise RowNotFoundException()
 
     query = (
         delete(Tweet)
@@ -119,20 +99,14 @@ async def delete_tweet(
     )
     request = await session.execute(query)
     if not request.fetchone():
-        return (
-            await exception_handler(
-                tweet_rep_logger,
-                ValueError(
-                    f"User with {username=} can't delete tweet with {tweet_id=}"
-                ),
-            ),
-            HTTPStatus.BAD_REQUEST,
+        raise PermissionException(
+            f"User with {username=} can't delete tweet with {tweet_id=}"
         )
 
     try:
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
-        return await exception_handler(tweet_rep_logger, exc), HTTPStatus.BAD_REQUEST
+        raise IntegrityViolationException(str(exc))
 
-    return SuccessSchema(), HTTPStatus.OK
+    return SuccessSchema()

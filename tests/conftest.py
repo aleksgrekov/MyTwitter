@@ -33,7 +33,7 @@ async def teardown_db():
         await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="class")
 async def prepare_database():
     assert settings.MODE == "TEST"
     await setup_db()
@@ -43,18 +43,18 @@ async def prepare_database():
     await teardown_db()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="class")
 async def populate_database_fixture(prepare_database) -> None:
     async with session_test() as session:
         await populate_database(session)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="class")
 def get_session_test():
     return session_test()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="class")
 async def users_and_followers(get_session_test):
     async with get_session_test as session:
         user1 = User(username="test_user1", name="Test User1")
@@ -62,20 +62,20 @@ async def users_and_followers(get_session_test):
         user3 = User(username="test_user3", name="Test User3")
         user4 = User(username="test_user4", name="Test User4")
 
-
         session.add_all([user1, user2, user3, user4])
         await session.flush()
 
         follow1 = Follow(follower_id=user1.id, following_id=user2.id)
         follow2 = Follow(follower_id=user2.id, following_id=user1.id)
+        follow3 = Follow(follower_id=user1.id, following_id=user4.id)
 
-        session.add_all([follow1, follow2])
+        session.add_all([follow1, follow2, follow3])
         await session.commit()
 
         return user1, user2, user3, user4
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="class")
 async def test_tweet(get_session_test, users_and_followers):
     async with get_session_test as session:
         tweet = Tweet(

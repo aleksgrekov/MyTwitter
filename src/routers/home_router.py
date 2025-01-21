@@ -5,10 +5,9 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from jinja2 import TemplateNotFound
 
-from src.functions import exception_handler, json_response_serialized
-from src.logger_setup import get_logger
+from src.handlers.exceptions import RowNotFoundException
+from src.handlers.handlers import exception_to_json
 
-routers_logger = get_logger(__name__)
 home_route = APIRouter(
     tags=["HomePage"],
 )
@@ -61,15 +60,5 @@ templates = Jinja2Templates(directory=path_to_template)
 async def home_page(request: Request) -> HTMLResponse | JSONResponse:
     try:
         return templates.TemplateResponse(request, "index.html", {"request": request})
-    except TemplateNotFound as exc:
-        exception = await exception_handler(routers_logger, exc)
-        return await json_response_serialized(
-            response=exception,
-            status_code=status.HTTP_404_NOT_FOUND,
-        )
-    except OSError as exc:
-        exception = await exception_handler(routers_logger, exc)
-        return await json_response_serialized(
-            response=exception,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        )
+    except TemplateNotFound:
+        return await exception_to_json(RowNotFoundException("Template not found"))
