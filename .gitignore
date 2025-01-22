@@ -2,6 +2,7 @@
 .venv-prod/
 .idea/
 media/
+test_dbs/
 db/
 
 *.pdf

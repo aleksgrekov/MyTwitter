@@ -1,9 +1,10 @@
-from sqlalchemy import delete, exists, select
+from typing import List
+
+from sqlalchemy import delete, exists, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.models import Follow, Tweet
-from src.database.repositories.media_repository import get_media_link_by
+from src.database.models import Follow, Media, Tweet
 from src.database.repositories.user_repository import get_user_id_by
 from src.handlers.exceptions import (
     IntegrityViolationException,
@@ -21,7 +22,7 @@ from src.schemas.tweet_schemas import (
 from src.schemas.user_schemas import UserSchema
 
 
-async def collect_tweet_data(tweet: "Tweet", session: AsyncSession) -> TweetSchema:
+async def collect_tweet_data(tweet: "Tweet") -> TweetSchema:
     """
     Collect detailed tweet data including attachments and likes.
 
@@ -30,15 +31,13 @@ async def collect_tweet_data(tweet: "Tweet", session: AsyncSession) -> TweetSche
 
     Args:
         tweet (Tweet): The tweet object containing the tweet data.
-        session (AsyncSession): The database session used for executing queries.
 
     Returns:
         TweetSchema: A schema containing detailed tweet information including
         content, attachments, author, and likes.
     """
-    attachments = [
-        await get_media_link_by(media_id, session) for media_id in tweet.tweet_media_ids
-    ]
+
+    attachments = [media.link for media in tweet.media]
     author_data = UserSchema.model_validate(tweet.author)
     likes_data = [LikeSchema.model_validate(like) for like in tweet.likes]
 
@@ -99,7 +98,7 @@ async def get_tweets_selection(
     )
     tweets = (await session.scalars(query)).unique().all()
 
-    tweet_schema = [await collect_tweet_data(tweet, session) for tweet in tweets]
+    tweet_schema = [await collect_tweet_data(tweet) for tweet in tweets]
 
     return TweetResponseSchema(tweets=tweet_schema)
 
@@ -128,14 +127,35 @@ async def add_tweet(
     if not user_id:
         raise RowNotFoundException()
 
-    new_tweet = Tweet(author_id=user_id, **tweet.model_dump())
+    new_tweet = Tweet(author_id=user_id, tweet_data=tweet.tweet_data)
     session.add(new_tweet)
     try:
-        await session.commit()
+        await save_tweet_and_update_media(new_tweet, tweet.tweet_media_ids, session)
     except IntegrityError as exc:
         await session.rollback()
         raise IntegrityViolationException(str(exc))
     return NewTweetResponseSchema(tweet_id=new_tweet.id)
+
+
+async def save_tweet_and_update_media(
+    tweet: Tweet, media_ids: List[int], session: AsyncSession
+) -> None:
+    """
+    Save the tweet and update media references in the database.
+
+    Args:
+        tweet (Tweet): The tweet for updating media.
+        media_ids (list[int]): List of media IDs to be associated with the tweet.
+        session (AsyncSession): The database session used for executing queries.
+
+    Raises:
+        IntegrityError: If there is a database integrity error.
+    """
+    await session.flush()
+    if media_ids:
+        query = update(Media).where(Media.id.in_(media_ids)).values(tweet_id=tweet.id)
+        await session.execute(query)
+    await session.commit()
 
 
 async def delete_tweet(

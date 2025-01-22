@@ -5,18 +5,16 @@ from src.handlers.exceptions import RowNotFoundException
 from src.schemas.base_schemas import SuccessSchema
 
 
-@pytest.mark.usefixtures("prepare_database")
 class TestFollowModel:
 
-    async def test_follow_success(self, get_session_test, users_and_followers):
+    async def test_follow_success(self, session, users_and_followers):
         """Тест успешного добавления подписки"""
-        async with get_session_test as session:
-            response = await follow(
-                username=users_and_followers[0].username,
-                following_id=users_and_followers[2].id,
-                session=session,
-            )
-            assert isinstance(response, SuccessSchema)
+        response = await follow(
+            username=users_and_followers[0].username,
+            following_id=users_and_followers[2].id,
+            session=session,
+        )
+        assert isinstance(response, SuccessSchema)
 
     @pytest.mark.parametrize(
         "username, following_id",
@@ -26,7 +24,7 @@ class TestFollowModel:
         ],
     )
     async def test_follow_user_not_found(
-        self, get_session_test, users_and_followers, username, following_id
+        self, session, users_and_followers, username, following_id
     ):
         """Тест на попытку подписаться на несуществующего пользователя"""
         username = (
@@ -34,25 +32,23 @@ class TestFollowModel:
         )
         following_id = users_and_followers[1].id if following_id == "existent" else 999
 
-        async with get_session_test as session:
-            with pytest.raises(RowNotFoundException) as exc_info:
-                await follow(
-                    username=username,
-                    following_id=following_id,
-                    session=session,
-                )
-            assert exc_info.value.detail == "User not found"
-            assert exc_info.value.status_code == 404
-
-    async def test_remove_follow_success(self, get_session_test, users_and_followers):
-        """Тест успешного удаления подписки"""
-        async with get_session_test as session:
-            response = await delete_follow(
-                username=users_and_followers[0].username,
-                following_id=users_and_followers[3].id,
+        with pytest.raises(RowNotFoundException) as exc_info:
+            await follow(
+                username=username,
+                following_id=following_id,
                 session=session,
             )
-            assert isinstance(response, SuccessSchema)
+        assert exc_info.value.detail == "User not found"
+        assert exc_info.value.status_code == 404
+
+    async def test_remove_follow_success(self, session, users_and_followers):
+        """Тест успешного удаления подписки"""
+        response = await delete_follow(
+            username=users_and_followers[0].username,
+            following_id=users_and_followers[3].id,
+            session=session,
+        )
+        assert isinstance(response, SuccessSchema)
 
     @pytest.mark.parametrize(
         "username, following_id, expected_message",
@@ -68,7 +64,7 @@ class TestFollowModel:
     )
     async def test_remove_follow_user_not_found(
         self,
-        get_session_test,
+        session,
         users_and_followers,
         username,
         following_id,
@@ -86,12 +82,11 @@ class TestFollowModel:
         else:
             following_id = 999
 
-        async with get_session_test as session:
-            with pytest.raises(RowNotFoundException) as exc_info:
-                await delete_follow(
-                    username=username,
-                    following_id=following_id,
-                    session=session,
-                )
-            assert exc_info.value.detail == expected_message
-            assert exc_info.value.status_code == 404
+        with pytest.raises(RowNotFoundException) as exc_info:
+            await delete_follow(
+                username=username,
+                following_id=following_id,
+                session=session,
+            )
+        assert exc_info.value.detail == expected_message
+        assert exc_info.value.status_code == 404

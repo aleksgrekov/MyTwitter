@@ -58,11 +58,10 @@ def generate_tweets(user_ids: List[int], num_tweets: int = NUM_TWEETS) -> List["
         Tweet(
             author_id=random.choice(user_ids),
             tweet_data=faker.sentence(),
-            tweet_media_ids=[],
         )
         for _ in range(num_tweets)
     ]
-    tweets.append(Tweet(author_id=2, tweet_data=faker.sentence(), tweet_media_ids=[]))
+    tweets.append(Tweet(author_id=2, tweet_data=faker.sentence()))
     prepare_data_logger.info(f"Created {len(tweets)} tweets.")
     return tweets
 

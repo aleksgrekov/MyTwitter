@@ -72,7 +72,7 @@ async def get_user_following(user_id: int, session: AsyncSession) -> Sequence["U
     """
     Get the users a user is following.
 
-    This function retrieves the list of users that the user with the given ID is following.
+    Retrieves the list of users that the user with the given ID is following.
 
     Args:
         user_id (int): The ID of the user whose following list is to be retrieved.

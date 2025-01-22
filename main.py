@@ -5,7 +5,7 @@ from src.routers.media_router import media_router
 from src.routers.tweet_router import tweet_router
 from src.routers.user_router import user_router
 
-app = FastAPI(lifespan=None, title="Twitter Clone API", version="1.0.0")
+app = FastAPI(title="Twitter Clone API", version="1.0.0")
 
 app.add_exception_handler(Exception, exception_handler)
 

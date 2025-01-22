@@ -23,10 +23,10 @@ media_router = APIRouter(
     response_model=Union[NewMediaResponseSchema, ErrorResponseSchema],
     status_code=status.HTTP_201_CREATED,
     summary="Upload a media file",
-    description="Uploads a media file to the server and returns a link to the file.",
+    description="Upload a media file to the server and save link to database.",
     responses={
         201: {
-            "description": "Media file uploaded successfully",
+            "description": "Media file added successfully",
             "model": NewMediaResponseSchema,
         },
         400: {"description": "Bad request", "model": ErrorResponseSchema},

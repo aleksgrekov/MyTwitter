@@ -42,7 +42,7 @@ async def save_uploaded_file(api_key: str, upload_file: UploadFile) -> str:
     if upload_file.filename is None or not await allowed_file(upload_file.filename):
         raise FileException("File format is not allowed. Please upload a valid file.")
 
-    filename = upload_file.filename if upload_file.filename else ""
+    filename = upload_file.filename
     filename = secure_filename(filename)
     output_file = (upload_folder / filename).resolve()
 

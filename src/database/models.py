@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from sqlalchemy import ARRAY, ForeignKey, Integer, String
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -75,9 +75,6 @@ class Tweet(Base):
     tweet_data: Mapped[str] = mapped_column(
         String(max_tweet_length), doc="Content of the tweet, max 280 characters"
     )
-    # tweet_media_ids: Mapped[List[int]] = mapped_column(
-    #     ARRAY(Integer), doc="List of associated media IDs"
-    # )
 
     author: Mapped["User"] = relationship(
         "User",
@@ -91,6 +88,14 @@ class Tweet(Base):
         cascade=DELETE_CASCADE,
         lazy="joined",
         doc="List of likes for this tweet",
+    )
+
+    media: Mapped[List["Media"]] = relationship(
+        "Media",
+        back_populates="tweet",
+        cascade=DELETE_CASCADE,
+        lazy="joined",
+        doc="List of media for this tweet",
     )
 
     def __repr__(self) -> str:
@@ -114,9 +119,18 @@ class Media(Base):
         doc="Tweet ID to which the media was attached",
     )
 
+    tweet: Mapped["Tweet"] = relationship(
+        "Tweet",
+        back_populates="media",
+        doc="The tweet to which the media was attached.",
+    )
+
     def __repr__(self) -> str:
         """Return a string representation of the media."""
-        return f"Media({self.id=}, {self.link=}, {self.tweet_id=})"
+        media_id = self.id
+        link = self.link
+        tweet_id = self.tweet_id
+        return f"Media({media_id=}, {link=}, {tweet_id=})"
 
 
 class Like(Base):
