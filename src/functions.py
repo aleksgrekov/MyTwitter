@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 from src.handlers.exceptions import FileException
 
 
-async def allowed_file(filename):
+async def allowed_file(filename: str) -> bool:
     """
     Checks if a file has an allowed extension.
 
@@ -39,7 +39,7 @@ async def save_uploaded_file(api_key: str, upload_file: UploadFile) -> str:
     upload_folder = Path(__file__).parent.parent / "media" / secure_filename(api_key)
     upload_folder.mkdir(parents=True, exist_ok=True)
 
-    if not await allowed_file(upload_file.filename):
+    if upload_file.filename is None or not await allowed_file(upload_file.filename):
         raise FileException("File format is not allowed. Please upload a valid file.")
 
     filename = upload_file.filename if upload_file.filename else ""

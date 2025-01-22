@@ -1,8 +1,11 @@
-.venv
-.venv-prod
-.idea
-media
+.venv/
+.venv-prod/
+.idea/
+media/
+db/
 
 *.pdf
 *.log
 .coverage
+.flake8
+docker-compose-test.yaml

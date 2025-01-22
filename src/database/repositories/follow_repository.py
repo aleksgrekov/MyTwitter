@@ -11,7 +11,24 @@ from src.schemas.base_schemas import SuccessSchema
 async def follow(
     username: str, following_id: int, session: AsyncSession
 ) -> SuccessSchema:
-    """Add a follow relationship."""
+    """
+    Add a follow relationship.
+
+    This function creates a "follow" relationship where the user identified
+    by `username` starts following the user identified by `following_id`.
+
+    Args:
+        username (str): The username of the follower.
+        following_id (int): The ID of the user to follow.
+        session (AsyncSession): The database session for executing queries.
+
+    Returns:
+        SuccessSchema: A schema indicating successful operation.
+
+    Raises:
+        RowNotFoundException: If the follower or following user does not exist.
+        IntegrityViolationException: If the follow relationship already exists.
+    """
     follower_id = await get_user_id_by(username, session)
 
     if not follower_id or not await is_user_exist(following_id, session):
@@ -31,7 +48,25 @@ async def follow(
 async def delete_follow(
     username: str, following_id: int, session: AsyncSession
 ) -> SuccessSchema:
-    """Remove a follow relationship."""
+    """
+    Remove a follow relationship.
+
+    This function removes the "follow" relationship where the user identified
+    by `username` unfollows the user identified by `following_id`.
+
+    Args:
+        username (str): The username of the follower.
+        following_id (int): The ID of the user to unfollow.
+        session (AsyncSession): The database session for executing queries.
+
+    Returns:
+        SuccessSchema: A schema indicating successful operation.
+
+    Raises:
+        RowNotFoundException: If the follower or following user does not exist,
+                              or if the follow relationship is not found.
+        IntegrityViolationException: If a database error occurs during the operation.
+    """
     follower_id = await get_user_id_by(username, session)
 
     if not follower_id or not await is_user_exist(following_id, session):

@@ -1,0 +1,48 @@
+services:
+  app:
+    build: .
+    container_name: app
+    ports:
+      - "8000:8000"
+    volumes:
+      - .env:/app/.env
+    networks:
+      - app_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+  postgres:
+    image: postgres
+    container_name: db
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=my_twitter
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin -d my_twitter" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app_network
+
+  nginx:
+    build: ./nginx
+    container_name: nginx
+    ports:
+      - "80:80"
+    networks:
+      - app_network
+    depends_on:
+      - app
+
+
+networks:
+  app_network:
+    driver: bridge

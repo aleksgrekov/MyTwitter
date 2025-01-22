@@ -3,8 +3,10 @@ from logging.config import dictConfig
 
 from src.logger_config import dict_config
 
+dictConfig(dict_config)
 
-def get_logger(name):
+
+def get_logger(name: str) -> logging.Logger:
     """
     Initializes and returns a logger instance configured
     with a predefined configuration.
@@ -15,6 +17,4 @@ def get_logger(name):
     Returns:
         logging.Logger: A logger instance with the specified name.
     """
-    dictConfig(dict_config)
-
     return logging.getLogger(name)

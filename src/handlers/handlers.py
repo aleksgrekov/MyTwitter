@@ -23,6 +23,7 @@ EXCEPTION_HANDLERS = (
 
 
 async def exception_to_json(exc: HTTPException) -> JSONResponse:
+    """Convert the exception to a JSON response."""
     exc_type = exc.__class__.__name__
     exc_message = exc.detail
 
@@ -37,14 +38,8 @@ async def exception_to_json(exc: HTTPException) -> JSONResponse:
     return JSONResponse(schema.model_dump(), exc.status_code)
 
 
-async def secure_request(coroutine: Coroutine):
-    try:
-        return await coroutine
-    except EXCEPTION_HANDLERS as exc:
-        return await exception_to_json(exc)
-
-
 async def exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Global exception handler for unexpected errors."""
     error_type = exc.__class__.__name__
     error_message = str(exc)
 
@@ -62,3 +57,11 @@ async def exception_handler(request: Request, exc: Exception) -> JSONResponse:
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=schema,
     )
+
+
+async def secure_request(coroutine: Coroutine) -> JSONResponse:
+    """Wrap coroutine calls and handle exceptions."""
+    try:
+        return await coroutine
+    except EXCEPTION_HANDLERS as exc:
+        return await exception_to_json(exc)

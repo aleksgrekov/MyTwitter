@@ -13,7 +13,11 @@ class Settings(BaseSettings):
     DB_NAME: str
 
     @property
-    def get_db_url(self):
+    def get_db_url(self) -> str:
+        """
+        Returns the full database URL for connecting to the PostgreSQL database
+        using asyncpg for async operations.
+        """
         return "postgresql+asyncpg://{user}:{password}@{host}:{port}/{name}".format(
             user=self.DB_USER,
             password=self.DB_PASSWORD,
@@ -23,7 +27,11 @@ class Settings(BaseSettings):
         )
 
     @property
-    def get_db_url_for_alembic(self):
+    def get_db_url_for_alembic(self) -> str:
+        """
+        Returns the database URL in a format suitable for Alembic migrations
+        (does not include asyncpg).
+        """
         return "postgresql://{user}:{password}@{host}:{port}/{name}".format(
             user=self.DB_USER,
             password=self.DB_PASSWORD,
@@ -37,4 +45,4 @@ class Settings(BaseSettings):
     )
 
 
-settings: Settings = Settings()
+settings: Settings = Settings() # type: ignore

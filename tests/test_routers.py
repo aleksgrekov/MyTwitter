@@ -1,43 +1,47 @@
 import os
 import tempfile
 from pathlib import Path
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator, Dict
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from jinja2 import TemplateNotFound
 
-from src.main import app
+from main import app
 
 
 @pytest.mark.usefixtures("populate_database_fixture")
 class TestApi:
     @pytest.fixture(scope="class")
     async def ac(self) -> AsyncGenerator[AsyncClient, None]:
+        """Создание клиента для взаимодействия с API."""
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as ac:
             yield ac
 
     @pytest.fixture(scope="class")
-    def api_key(self):
+    def api_key(self) -> Dict[str, str]:
+        """Возвращает правильный API-ключ для аутентификации."""
         return {"api-key": "test"}
 
     @pytest.fixture(scope="class")
-    def wrong_api_key(self):
+    def wrong_api_key(self) -> Dict[str, str]:
+        """Возвращает неправильный API-ключ для аутентификации."""
         return {"api-key": "wrong_username"}
 
     @pytest.fixture(scope="function")
-    async def add_tweet(self, ac, api_key):
+    async def add_tweet(self, ac: AsyncClient, api_key: Dict[str, str]) -> Any:
+        """Создание твита для тестов."""
         tweet_data = {"tweet_data": "Test tweet", "tweet_media_ids": []}
         return await ac.post("/api/tweets", json=tweet_data, headers=api_key)
 
     @pytest.fixture(scope="class")
-    def temp_image(self):
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as f:
-            f.write(b"fakeimagecontent")
-            yield f.name
-            os.remove(f.name)
+    def temp_image(self) -> str:
+        """Создание временного изображения для тестов."""
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as file:
+            file.write(b"fakeimagecontent")
+            yield file.name
+            os.remove(file.name)
 
     @pytest.mark.parametrize(
         "headers, expected_status, expected_result, expected_error",
@@ -48,15 +52,15 @@ class TestApi:
     )
     async def test_get_my_profile(
         self,
-        ac,
-        api_key,
-        wrong_api_key,
-        headers,
-        expected_status,
-        expected_result,
-        expected_error,
-    ):
-        """Тесты для получения профиля текущего пользователя, включая все возможные ответы."""
+        ac: AsyncClient,
+        api_key: Dict[str, str],
+        wrong_api_key: Dict[str, str],
+        headers: str,
+        expected_status: int,
+        expected_result: bool,
+        expected_error: str | None,
+    ) -> None:
+        """Тест для получения профиля текущего пользователя, включая все возможные ответы."""
         headers = api_key if headers == "api_key" else wrong_api_key
 
         response = await ac.get("/api/users/me", headers=headers)
@@ -83,10 +87,14 @@ class TestApi:
         ],
     )
     async def test_get_user_profile(
-        self, ac, user_id, expected_status, expected_result, expected_error
-    ):
-        """Тесты для получения профиля текущего пользователя, включая все возможные ответы."""
-
+        self,
+        ac: AsyncClient,
+        user_id: int,
+        expected_status: int,
+        expected_result: bool,
+        expected_error: str | None,
+    ) -> None:
+        """Тесты для получения профиля другого пользователя."""
         response = await ac.get(f"/api/users/{user_id}")
 
         assert response.status_code == expected_status
@@ -111,10 +119,15 @@ class TestApi:
         ],
     )
     async def test_get_tweets(
-        self, ac, api_key, wrong_api_key, headers, expected_status, expected_result
-    ):
+        self,
+        ac: AsyncClient,
+        api_key: Dict[str, str],
+        wrong_api_key: Dict[str, str],
+        headers: str,
+        expected_status: int,
+        expected_result: bool,
+    ) -> None:
         """Тест получения твитов."""
-
         headers = api_key if headers == "api_key" else wrong_api_key
 
         response = await ac.get("/api/tweets", headers=headers)
@@ -145,17 +158,16 @@ class TestApi:
     )
     async def test_create_tweet(
         self,
-        ac,
-        api_key,
-        wrong_api_key,
-        headers,
-        tweet_data,
-        expected_status,
-        expected_result,
-        expected_error_message,
-    ):
+        ac: AsyncClient,
+        api_key: Dict[str, str],
+        wrong_api_key: Dict[str, str],
+        headers: str,
+        tweet_data: Dict[str, Any],
+        expected_status: int,
+        expected_result: bool,
+        expected_error_message: str | None,
+    ) -> None:
         """Тест для создания твита с проверкой всех возможных ответов."""
-
         headers = api_key if headers == "api_key" else wrong_api_key
 
         response = await ac.post("/api/tweets", json=tweet_data, headers=headers)
@@ -180,17 +192,16 @@ class TestApi:
     )
     async def test_delete_tweet(
         self,
-        ac,
-        api_key,
-        wrong_api_key,
-        add_tweet,
-        tweet_id,
-        headers,
-        expected_status,
-        expected_result,
-    ):
+        ac: AsyncClient,
+        api_key: Dict[str, str],
+        wrong_api_key: Dict[str, str],
+        add_tweet: Any,
+        tweet_id: str,
+        headers: str,
+        expected_status: int,
+        expected_result: bool,
+    ) -> None:
         """Тест удаления твита."""
-
         if tweet_id == "valid_tweet":
             tweet_id = add_tweet.json()["tweet_id"]
 
@@ -213,16 +224,16 @@ class TestApi:
     )
     async def test_like_tweet(
         self,
-        ac,
-        api_key,
-        wrong_api_key,
-        add_tweet,
-        tweet_id,
-        headers,
-        expected_status,
-        expected_result,
-        duplicate_like,
-    ):
+        ac: AsyncClient,
+        api_key: Dict[str, str],
+        wrong_api_key: Dict[str, str],
+        add_tweet: Any,
+        tweet_id: int,
+        headers: str,
+        expected_status: int,
+        expected_result: bool,
+        duplicate_like: bool,
+    ) -> None:
         """Тест добавления лайка к твиту, включая проверку повторного лайка."""
 
         if tweet_id == "valid_tweet":
@@ -250,16 +261,16 @@ class TestApi:
     )
     async def test_unlike_tweet(
         self,
-        ac,
-        api_key,
-        wrong_api_key,
-        add_tweet,
-        setup_like,
-        tweet_id,
-        headers,
-        expected_status,
-        expected_result,
-    ):
+        ac: AsyncClient,
+        api_key: Dict[str, str],
+        wrong_api_key: Dict[str, str],
+        add_tweet: Any,
+        setup_like: int,
+        tweet_id: int,
+        headers: str,
+        expected_status: int,
+        expected_result: bool,
+    ) -> None:
         """Тесты для удаления лайков с твита, покрывающие все возможные сценарии."""
 
         if tweet_id == "valid_tweet":
@@ -288,15 +299,15 @@ class TestApi:
     )
     async def test_add_follow(
         self,
-        ac,
-        api_key,
-        wrong_api_key,
-        headers,
-        user_id,
-        expected_status,
-        expected_result,
-        expected_error_message,
-    ):
+        ac: AsyncClient,
+        api_key: Dict[str, str],
+        wrong_api_key: Dict[str, str],
+        headers: str,
+        user_id: int,
+        expected_status: int,
+        expected_result: bool,
+        expected_error_message: str,
+    ) -> None:
         """Тест для добавления подписки с проверкой всех возможных ответов."""
 
         headers = api_key if headers == "api_key" else wrong_api_key
@@ -328,17 +339,16 @@ class TestApi:
     )
     async def test_unfollow_user(
         self,
-        ac,
-        api_key,
-        wrong_api_key,
-        headers,
-        user_id,
-        expected_status,
-        expected_result,
-        expected_error_message,
-    ):
-        """Тест для удаления подписки с проверкой всех возможных ответов."""
-
+        ac: AsyncClient,
+        api_key: Dict[str, str],
+        wrong_api_key: Dict[str, str],
+        headers: str,
+        user_id: int,
+        expected_status: int,
+        expected_result: bool,
+        expected_error_message: str,
+    ) -> None:
+        """Тест отмены подписки на пользователя."""
         headers = api_key if headers == "api_key" else wrong_api_key
 
         response = await ac.delete(f"/api/users/{user_id}/follow", headers=headers)
@@ -348,7 +358,9 @@ class TestApi:
 
         assert data["result"] == expected_result
 
-    async def test_upload_media(self, ac, api_key, temp_image):
+    async def test_upload_media(
+        self, ac: AsyncClient, api_key: Dict[str, str], temp_image: str
+    ) -> None:
         """Тест успешной загрузки медиафайла."""
 
         file_path = Path(temp_image)
@@ -361,24 +373,3 @@ class TestApi:
         response_data = response.json()
         assert response_data["result"] is True
         assert "media_id" in response_data
-
-    async def test_home_page(self, ac):
-        """Тест для главной страницы"""
-        response = await ac.get("/")
-
-        assert response.status_code == 200
-
-    async def test_homepage_template_error(self, ac, mocker):
-        """Тест для обработки ошибки рендеринга"""
-
-        mocker.patch(
-            "fastapi.templating.Jinja2Templates.TemplateResponse",
-            side_effect=TemplateNotFound("Mock exception"),
-        )
-
-        response = await ac.get("/")
-        assert response.status_code == 404
-        error_data = response.json()
-        assert error_data["result"] is False
-        assert error_data["error_type"] == "RowNotFoundException"
-        assert error_data["error_message"] == "Template not found"

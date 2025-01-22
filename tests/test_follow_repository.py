@@ -9,6 +9,7 @@ from src.schemas.base_schemas import SuccessSchema
 class TestFollowModel:
 
     async def test_follow_success(self, get_session_test, users_and_followers):
+        """Тест успешного добавления подписки"""
         async with get_session_test as session:
             response = await follow(
                 username=users_and_followers[0].username,
@@ -27,6 +28,7 @@ class TestFollowModel:
     async def test_follow_user_not_found(
         self, get_session_test, users_and_followers, username, following_id
     ):
+        """Тест на попытку подписаться на несуществующего пользователя"""
         username = (
             users_and_followers[0].username if username == "existent" else "nonexistent"
         )
@@ -43,6 +45,7 @@ class TestFollowModel:
             assert exc_info.value.status_code == 404
 
     async def test_remove_follow_success(self, get_session_test, users_and_followers):
+        """Тест успешного удаления подписки"""
         async with get_session_test as session:
             response = await delete_follow(
                 username=users_and_followers[0].username,
@@ -71,6 +74,7 @@ class TestFollowModel:
         following_id,
         expected_message,
     ):
+        """Тест на попытку удаления подписки с несуществующим пользователем или записью"""
         username = (
             users_and_followers[0].username if username == "existent" else "nonexistent"
         )

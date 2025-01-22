@@ -22,7 +22,20 @@ from src.schemas.user_schemas import UserSchema
 
 
 async def collect_tweet_data(tweet: "Tweet", session: AsyncSession) -> TweetSchema:
-    """Collect detailed tweet data including attachments and likes."""
+    """
+    Collect detailed tweet data including attachments and likes.
+
+    This function retrieves detailed information about the tweet, including
+    media attachments and associated likes.
+
+    Args:
+        tweet (Tweet): The tweet object containing the tweet data.
+        session (AsyncSession): The database session used for executing queries.
+
+    Returns:
+        TweetSchema: A schema containing detailed tweet information including
+        content, attachments, author, and likes.
+    """
     attachments = [
         await get_media_link_by(media_id, session) for media_id in tweet.tweet_media_ids
     ]
@@ -39,7 +52,19 @@ async def collect_tweet_data(tweet: "Tweet", session: AsyncSession) -> TweetSche
 
 
 async def is_tweet_exist(tweet_id: int, session: AsyncSession) -> bool:
-    """Check if a tweet exists by its ID."""
+    """
+    Check if a tweet exists by its ID.
+
+    This function checks whether a tweet with the specified ID exists in the
+    database.
+
+    Args:
+        tweet_id (int): The ID of the tweet to check.
+        session (AsyncSession): The database session used for executing queries.
+
+    Returns:
+        bool: True if the tweet exists, False otherwise.
+    """
     query = select(exists().where(Tweet.id == tweet_id))
     response = await session.scalar(query)
     return response is not None and response
@@ -48,8 +73,21 @@ async def is_tweet_exist(tweet_id: int, session: AsyncSession) -> bool:
 async def get_tweets_selection(
     username: str, session: AsyncSession
 ) -> TweetResponseSchema:
-    """Get all tweets for a user."""
+    """
+    Get all tweets for a user.
 
+    This function retrieves all tweets of a user and their followees.
+
+    Args:
+        username (str): The username of the user whose tweets are to be retrieved.
+        session (AsyncSession): The database session used for executing queries.
+
+    Returns:
+        TweetResponseSchema: A schema containing a list of tweets with detailed data.
+
+    Raises:
+        RowNotFoundException: If the user is not found in the database.
+    """
     user_id = await get_user_id_by(username, session)
     if not user_id:
         raise RowNotFoundException()
@@ -69,7 +107,23 @@ async def get_tweets_selection(
 async def add_tweet(
     username: str, tweet: TweetBaseSchema, session: AsyncSession
 ) -> NewTweetResponseSchema:
-    """Add a new tweet."""
+    """
+    Add a new tweet.
+
+    This function adds a new tweet by the user.
+
+    Args:
+        username (str): The username of the user who is posting the tweet.
+        tweet (TweetBaseSchema): The tweet data to be added.
+        session (AsyncSession): The database session used for executing queries.
+
+    Returns:
+        NewTweetResponseSchema: A schema containing the ID of the newly created tweet.
+
+    Raises:
+        RowNotFoundException: If the user does not exist.
+        IntegrityViolationException: If there is a database integrity error.
+    """
     user_id = await get_user_id_by(username, session)
     if not user_id:
         raise RowNotFoundException()
@@ -87,7 +141,25 @@ async def add_tweet(
 async def delete_tweet(
     username: str, tweet_id: int, session: AsyncSession
 ) -> SuccessSchema:
-    """Delete a tweet."""
+    """
+    Delete a tweet.
+
+    This function deletes the tweet specified by `tweet_id` if the user is
+    the author of the tweet.
+
+    Args:
+        username (str): The username of the user who is deleting the tweet.
+        tweet_id (int): The ID of the tweet to be deleted.
+        session (AsyncSession): The database session used for executing queries.
+
+    Returns:
+        SuccessSchema: A schema indicating that the tweet was successfully deleted.
+
+    Raises:
+        RowNotFoundException: If the user does not exist.
+        PermissionException: If the user is not authorized to delete the tweet.
+        IntegrityViolationException: If there is a database integrity error.
+    """
     user_id = await get_user_id_by(username, session)
     if not user_id:
         raise RowNotFoundException()

@@ -2,11 +2,11 @@ import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from main import app
 from src.database.config import settings
 from src.database.models import Base, Follow, Tweet, User
 from src.database.service import create_session
-from src.main import app
-from src.prepare_data import populate_database
+from tests.prepare_data import populate_database
 
 TEST_DATABASE_URL = settings.get_db_url
 engine_test = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
@@ -37,9 +37,7 @@ async def teardown_db():
 async def prepare_database():
     assert settings.MODE == "TEST"
     await setup_db()
-
     yield
-
     await teardown_db()
 
 
@@ -86,5 +84,4 @@ async def test_tweet(get_session_test, users_and_followers):
         session.add(tweet)
         await session.commit()
         await session.refresh(tweet)
-
         return tweet

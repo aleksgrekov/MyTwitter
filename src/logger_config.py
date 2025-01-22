@@ -1,4 +1,8 @@
 import sys
+from pathlib import Path
+
+log_file_path = Path(__file__).parent.parent / "logfile.log"
+
 
 dict_config = {
     "version": 1,
@@ -23,7 +27,7 @@ dict_config = {
             "class": "logging.FileHandler",
             "level": "WARNING",
             "formatter": "fileFormatter",
-            "filename": "../logfile.log",
+            "filename": str(log_file_path),
         },
     },
     "root": {"level": "DEBUG", "handlers": ["stream", "file"]},
