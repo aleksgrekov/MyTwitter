@@ -75,9 +75,9 @@ class Tweet(Base):
     tweet_data: Mapped[str] = mapped_column(
         String(max_tweet_length), doc="Content of the tweet, max 280 characters"
     )
-    tweet_media_ids: Mapped[List[int]] = mapped_column(
-        ARRAY(Integer), doc="List of associated media IDs"
-    )
+    # tweet_media_ids: Mapped[List[int]] = mapped_column(
+    #     ARRAY(Integer), doc="List of associated media IDs"
+    # )
 
     author: Mapped["User"] = relationship(
         "User",
@@ -109,10 +109,14 @@ class Media(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, doc="Primary key of the media")
     link: Mapped[str] = mapped_column(String(100), doc="Path link to the media")
+    tweet_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("tweets.id", ondelete="cascade"),
+        doc="Tweet ID to which the media was attached",
+    )
 
     def __repr__(self) -> str:
         """Return a string representation of the media."""
-        return f"Media({self.id=}, {self.link=})"
+        return f"Media({self.id=}, {self.link=}, {self.tweet_id=})"
 
 
 class Like(Base):
