@@ -21,17 +21,17 @@ from src.schemas.tweet_schemas import (
 class TestTweetModel:
 
     @pytest.mark.parametrize(
-        "tweet_id, expected_result", [("exist", True), (999, False)]
+        "tweet_id_value, expected_result", [("exist", True), ("not exist", False)]
     )
     async def test_is_tweet_exist(
         self,
         session: AsyncSession,
         test_tweet: Tweet,
-        tweet_id: str | int,
+        tweet_id_value: str,
         expected_result: bool,
     ) -> None:
         """Тестирует наличие твита в базе данных по идентификатору."""
-        tweet_id = test_tweet.id if tweet_id == "exist" else tweet_id
+        tweet_id = test_tweet.id if tweet_id_value == "exist" else 999
 
         exists = await is_tweet_exist(tweet_id=tweet_id, session=session)
         assert exists is expected_result

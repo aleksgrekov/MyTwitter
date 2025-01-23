@@ -1,7 +1,7 @@
 import os
 import tempfile
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict
+from typing import Any, AsyncGenerator, Dict, Generator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -36,15 +36,15 @@ class TestApi:
         return await ac.post("/api/tweets", json=tweet_data, headers=api_key)
 
     @pytest.fixture(scope="class")
-    def temp_image(self) -> str:
+    def temp_image(self) -> Generator[str, None, None]:
         """Создание временного изображения для тестов."""
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as file:
             file.write(b"fakeimagecontent")
-            yield file.name
-            os.remove(file.name)
+        yield file.name
+        os.remove(file.name)
 
     @pytest.mark.parametrize(
-        "headers, expected_status, expected_result, expected_error",
+        "headers_value, expected_status, expected_result, expected_error",
         [
             ("api_key", 200, True, None),
             ("wrong_api_key", 404, False, "User not found"),
@@ -55,13 +55,13 @@ class TestApi:
         ac: AsyncClient,
         api_key: Dict[str, str],
         wrong_api_key: Dict[str, str],
-        headers: str,
+        headers_value: str,
         expected_status: int,
         expected_result: bool,
         expected_error: str | None,
     ) -> None:
         """Тест для получения профиля текущего пользователя, включая все возможные ответы."""
-        headers = api_key if headers == "api_key" else wrong_api_key
+        headers = api_key if headers_value == "api_key" else wrong_api_key
 
         response = await ac.get("/api/users/me", headers=headers)
 
@@ -112,7 +112,7 @@ class TestApi:
             assert data["error_message"] == expected_error
 
     @pytest.mark.parametrize(
-        "headers, expected_status, expected_result",
+        "headers_value, expected_status, expected_result",
         [
             ("api_key", 200, True),
             ("wrong_api_key", 404, False),
@@ -123,12 +123,12 @@ class TestApi:
         ac: AsyncClient,
         api_key: Dict[str, str],
         wrong_api_key: Dict[str, str],
-        headers: str,
+        headers_value: str,
         expected_status: int,
         expected_result: bool,
     ) -> None:
         """Тест получения твитов."""
-        headers = api_key if headers == "api_key" else wrong_api_key
+        headers = api_key if headers_value == "api_key" else wrong_api_key
 
         response = await ac.get("/api/tweets", headers=headers)
 
@@ -138,7 +138,7 @@ class TestApi:
         assert data["result"] is expected_result
 
     @pytest.mark.parametrize(
-        "headers, tweet_data, expected_status, expected_result, expected_error_message",
+        "headers_value, tweet_data, expected_status, expected_result, expected_error_message",
         [
             (
                 "api_key",
@@ -161,14 +161,14 @@ class TestApi:
         ac: AsyncClient,
         api_key: Dict[str, str],
         wrong_api_key: Dict[str, str],
-        headers: str,
+        headers_value: str,
         tweet_data: Dict[str, Any],
         expected_status: int,
         expected_result: bool,
         expected_error_message: str | None,
     ) -> None:
         """Тест для создания твита с проверкой всех возможных ответов."""
-        headers = api_key if headers == "api_key" else wrong_api_key
+        headers = api_key if headers_value == "api_key" else wrong_api_key
 
         response = await ac.post("/api/tweets", json=tweet_data, headers=headers)
 
@@ -183,7 +183,7 @@ class TestApi:
             assert data["error_message"] == expected_error_message
 
     @pytest.mark.parametrize(
-        "tweet_id, headers, expected_status, expected_result",
+        "tweet_id, headers_value, expected_status, expected_result",
         [
             ("valid_tweet", "api_key", 200, True),
             ("valid_tweet", "wrong_api_key", 404, False),
@@ -197,7 +197,7 @@ class TestApi:
         wrong_api_key: Dict[str, str],
         add_tweet: Any,
         tweet_id: str,
-        headers: str,
+        headers_value: str,
         expected_status: int,
         expected_result: bool,
     ) -> None:
@@ -205,7 +205,7 @@ class TestApi:
         if tweet_id == "valid_tweet":
             tweet_id = add_tweet.json()["tweet_id"]
 
-        headers = api_key if headers == "api_key" else wrong_api_key
+        headers = api_key if headers_value == "api_key" else wrong_api_key
 
         response = await ac.delete(f"/api/tweets/{tweet_id}", headers=headers)
 
@@ -214,7 +214,7 @@ class TestApi:
         assert response_data["result"] is expected_result
 
     @pytest.mark.parametrize(
-        "tweet_id, headers, expected_status, expected_result, duplicate_like",
+        "tweet_id, headers_value, expected_status, expected_result, duplicate_like",
         [
             ("valid_tweet", "api_key", 201, True, False),
             ("valid_tweet", "api_key", 409, False, True),
@@ -229,7 +229,7 @@ class TestApi:
         wrong_api_key: Dict[str, str],
         add_tweet: Any,
         tweet_id: int,
-        headers: str,
+        headers_value: str,
         expected_status: int,
         expected_result: bool,
         duplicate_like: bool,
@@ -239,7 +239,7 @@ class TestApi:
         if tweet_id == "valid_tweet":
             tweet_id = add_tweet.json()["tweet_id"]
 
-        headers = api_key if headers == "api_key" else wrong_api_key
+        headers = api_key if headers_value == "api_key" else wrong_api_key
 
         if duplicate_like:
             await ac.post(f"/api/tweets/{tweet_id}/likes", headers=api_key)
@@ -251,7 +251,7 @@ class TestApi:
         assert like_data["result"] is expected_result
 
     @pytest.mark.parametrize(
-        "setup_like, tweet_id, headers, expected_status, expected_result",
+        "setup_like, tweet_id, headers_value, expected_status, expected_result",
         [
             (True, "valid_tweet", "api_key", 200, True),
             (False, "valid_tweet", "api_key", 404, False),
@@ -267,7 +267,7 @@ class TestApi:
         add_tweet: Any,
         setup_like: int,
         tweet_id: int,
-        headers: str,
+        headers_value: str,
         expected_status: int,
         expected_result: bool,
     ) -> None:
@@ -276,7 +276,7 @@ class TestApi:
         if tweet_id == "valid_tweet":
             tweet_id = add_tweet.json()["tweet_id"]
 
-        headers = api_key if headers == "api_key" else wrong_api_key
+        headers = api_key if headers_value == "api_key" else wrong_api_key
 
         if setup_like:
             await ac.post(f"/api/tweets/{tweet_id}/likes", headers=api_key)
@@ -290,7 +290,7 @@ class TestApi:
         assert unlike_data["result"] is expected_result
 
     @pytest.mark.parametrize(
-        "headers, user_id, expected_status, expected_result, expected_error_message",
+        "headers_value, user_id, expected_status, expected_result, expected_error_message",
         [
             ("api_key", 1, 201, True, None),  # Успешное добавление подписки
             ("api_key", 9999, 404, False, "User not found"),
@@ -302,7 +302,7 @@ class TestApi:
         ac: AsyncClient,
         api_key: Dict[str, str],
         wrong_api_key: Dict[str, str],
-        headers: str,
+        headers_value: str,
         user_id: int,
         expected_status: int,
         expected_result: bool,
@@ -310,7 +310,7 @@ class TestApi:
     ) -> None:
         """Тест для добавления подписки с проверкой всех возможных ответов."""
 
-        headers = api_key if headers == "api_key" else wrong_api_key
+        headers = api_key if headers_value == "api_key" else wrong_api_key
 
         response = await ac.post(f"/api/users/{user_id}/follow", headers=headers)
 
@@ -323,7 +323,7 @@ class TestApi:
             assert data["error_message"] == expected_error_message
 
     @pytest.mark.parametrize(
-        "headers, user_id, expected_status, expected_result, expected_error_message",
+        "headers_value, user_id, expected_status, expected_result, expected_error_message",
         [
             ("api_key", 2, 200, True, None),
             ("api_key", 9999, 404, False, "User not found"),
@@ -342,14 +342,14 @@ class TestApi:
         ac: AsyncClient,
         api_key: Dict[str, str],
         wrong_api_key: Dict[str, str],
-        headers: str,
+        headers_value: str,
         user_id: int,
         expected_status: int,
         expected_result: bool,
         expected_error_message: str,
     ) -> None:
         """Тест отмены подписки на пользователя."""
-        headers = api_key if headers == "api_key" else wrong_api_key
+        headers = api_key if headers_value == "api_key" else wrong_api_key
 
         response = await ac.delete(f"/api/users/{user_id}/follow", headers=headers)
 

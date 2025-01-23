@@ -33,8 +33,8 @@ class UserWithFollowSchema(UserSchema):
 class UserResponseSchema(SuccessSchema):
     """Schema for a user data response."""
 
-    user: Optional[UserWithFollowSchema] = Field(
-        None,
+    user: UserWithFollowSchema = Field(
+        ...,
         title="User data",
         description="Detailed information about the user, "
         "including their followers and following.",

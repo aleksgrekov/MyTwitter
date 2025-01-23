@@ -65,6 +65,7 @@ class TestUserRepository:
         Проверяет получение пользователя с его подписчиками и подписками
         по имени пользователя (username) или ID пользователя (user_id).
         """
+
         if lookup_by == "username":
             response = await get_user_with_followers_and_following(
                 session, username=users_and_followers[0].username
@@ -76,6 +77,7 @@ class TestUserRepository:
         else:
             response = None
 
+        assert response is not None
         assert isinstance(response, UserResponseSchema)
         assert response.result is True
         assert response.user.id == users_and_followers[0].id

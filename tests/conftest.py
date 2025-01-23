@@ -1,15 +1,16 @@
+from pathlib import Path
+
 import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.pool import StaticPool
-from sqlalchemy_utils import drop_database
+from sqlalchemy.pool import NullPool
 
 from main import app
 from src.database.models import Base, Follow, Tweet, User
 from src.database.service import create_session
 from tests.prepare_data import populate_database
 
-TEST_DATABASE_URL = "sqlite+aiosqlite:///test.db"
-engine_test = create_async_engine(TEST_DATABASE_URL, poolclass=StaticPool)
+TEST_DATABASE_URL = "sqlite+aiosqlite:///test.db-dev"
+engine_test = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
 session_test = async_sessionmaker(
     autocommit=False, autoflush=False, bind=engine_test, expire_on_commit=False
 )
@@ -33,16 +34,19 @@ async def teardown_db():
         await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="class", autouse=True)
 async def prepare_database():
     await setup_db()
     yield
     await teardown_db()
-    drop_database(TEST_DATABASE_URL)
+    db_path = Path("test.db-dev")
+
+    if db_path.exists():
+        db_path.unlink()
 
 
 @pytest.fixture(scope="class")
-async def session(prepare_database):
+async def session():
     async with session_test() as session:
         yield session
 

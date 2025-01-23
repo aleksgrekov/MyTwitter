@@ -6,7 +6,6 @@ from src.schemas.base_schemas import SuccessSchema
 
 
 class TestFollowModel:
-
     async def test_follow_success(self, session, users_and_followers):
         """Тест успешного добавления подписки"""
         response = await follow(
@@ -17,20 +16,25 @@ class TestFollowModel:
         assert isinstance(response, SuccessSchema)
 
     @pytest.mark.parametrize(
-        "username, following_id",
+        "username, following_id, expected_message",
         [
-            ("nonexistent", "existent"),
-            ("existent", "nonexistent"),
+            ("nonexistent", "existent", "User not found"),
+            ("existent", "nonexistent", "User not found"),
         ],
     )
     async def test_follow_user_not_found(
-        self, session, users_and_followers, username, following_id
+        self, session, users_and_followers, username, following_id, expected_message
     ):
         """Тест на попытку подписаться на несуществующего пользователя"""
-        username = (
-            users_and_followers[0].username if username == "existent" else "nonexistent"
-        )
-        following_id = users_and_followers[1].id if following_id == "existent" else 999
+        if username == "existent":
+            username = users_and_followers[0].username
+        else:
+            username = "nonexistent"
+
+        if following_id == "existent":
+            following_id = users_and_followers[1].id
+        else:
+            following_id = 999
 
         with pytest.raises(RowNotFoundException) as exc_info:
             await follow(
@@ -38,7 +42,7 @@ class TestFollowModel:
                 following_id=following_id,
                 session=session,
             )
-        assert exc_info.value.detail == "User not found"
+        assert exc_info.value.detail == expected_message
         assert exc_info.value.status_code == 404
 
     async def test_remove_follow_success(self, session, users_and_followers):
@@ -71,9 +75,10 @@ class TestFollowModel:
         expected_message,
     ):
         """Тест на попытку удаления подписки с несуществующим пользователем или записью"""
-        username = (
-            users_and_followers[0].username if username == "existent" else "nonexistent"
-        )
+        if username == "existent":
+            username = users_and_followers[0].username
+        else:
+            username = "nonexistent"
 
         if following_id == "existent":
             following_id = users_and_followers[2].id

@@ -1,12 +1,28 @@
+# Виртуальные окружения
 .venv/
 .venv-prod/
+
+# Конфигурации IDE
 .idea/
+
+# Медиафайлы и базы данных
 media/
-test_dbs/
+media-dev/
+db-dev/
 db/
 
+# Файлы определенного формата
 *.pdf
 *.log
+*.db
+
+# Покрытие тестов
 .coverage
-.flake8
-docker-compose-test.yaml
+
+# Переменные окружения
+.env
+
+# Файлы dev окружения
+requirements-dev.txt
+Dockerfile-dev
+docker-compose-dev.yaml
