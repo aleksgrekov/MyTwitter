@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from main import app
+from src.database.config import settings
 from src.database.models import Base, Follow, Tweet, User
 from src.database.service import create_session
 from tests.prepare_data import populate_database
@@ -36,6 +37,7 @@ async def teardown_db():
 
 @pytest.fixture(scope="class", autouse=True)
 async def prepare_database():
+    assert settings.MODE == "TEST"
     await setup_db()
     yield
     await teardown_db()
