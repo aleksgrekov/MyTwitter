@@ -23,6 +23,5 @@ db/
 .env
 
 # Файлы dev окружения
-requirements-dev.txt
 Dockerfile-dev
 docker-compose-dev.yaml
