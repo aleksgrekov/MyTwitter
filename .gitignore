@@ -1,3 +1,27 @@
-.venv
-.idea
+# Виртуальные окружения
+.venv/
+.venv-prod/
+
+# Конфигурации IDE
+.idea/
+
+# Медиафайлы и базы данных
+media/
+media-dev/
+db-dev/
+db/
+
+# Файлы определенного формата
 *.pdf
+*.log
+*.db
+
+# Покрытие тестов
+.coverage
+
+# Переменные окружения
+.env
+
+# Файлы dev окружения
+Dockerfile-dev
+docker-compose-dev.yaml
