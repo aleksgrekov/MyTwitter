@@ -1,7 +1,9 @@
 import sys
 from pathlib import Path
 
-log_file_path = Path(__file__).parent.parent / "logs" / "logfile.log"
+log_folder_path = Path(__file__).parent.parent / "logs"
+log_folder_path.mkdir(exist_ok=True)
+log_file_path = log_folder_path / "logfile.log"
 
 
 dict_config = {
