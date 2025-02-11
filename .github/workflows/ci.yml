@@ -30,7 +30,7 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run unittests
-        run: pytest tests
+        run: pytest tests --cov
 
       - name: Run mypy
         run: |
